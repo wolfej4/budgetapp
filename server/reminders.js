@@ -81,7 +81,7 @@ async function sendReminderForUser(db, user, isTest = false) {
   await transporter.sendMail({
     from,
     to: user.email,
-    subject: `BudgetApp: Upcoming Payment Reminder`,
+    subject: `BudgetBuddy: Upcoming Payment Reminder`,
     html,
   });
 }

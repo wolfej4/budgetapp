@@ -34,7 +34,7 @@ export default function Login() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-title">Welcome back</div>
-        <div className="auth-subtitle">Sign in to your BudgetApp account</div>
+        <div className="auth-subtitle">Sign in to your BudgetBuddy account</div>
         {error && <div className="error-msg">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">

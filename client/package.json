@@ -1,5 +1,5 @@
 {
-  "name": "budgetapp-client",
+  "name": "budgetbuddy-client",
   "scripts": {
     "dev": "vite --port 5173",
     "build": "vite build"

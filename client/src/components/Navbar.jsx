@@ -38,7 +38,7 @@ export default function Navbar() {
       <nav className="navbar">
         <div className="navbar-brand">
           <span className="brand-icon">💰</span>
-          <span className="brand-name">BudgetApp</span>
+          <span className="brand-name">BudgetBuddy</span>
         </div>
         <div className="navbar-links">
           <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Dashboard</NavLink>

@@ -1,5 +1,5 @@
 {
-  "name": "budgetapp-server",
+  "name": "budgetbuddy-server",
   "scripts": {
     "start": "node index.js"
   },
