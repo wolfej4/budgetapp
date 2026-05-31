@@ -1,3 +1,29 @@
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --card-hover: #f1f5f9;
+  --card-border: #e2e8f0;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --input-bg: #f1f5f9;
+  --input-border: #cbd5e1;
+  --chip-bg: #e0e7ff;
+  --chip-text: #4338ca;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.08);
+  --success: #16a34a;
+  --success-light: rgba(22, 163, 74, 0.08);
+  --warning: #d97706;
+  --warning-light: rgba(217, 119, 6, 0.08);
+}
+
 :root {
   --bg: #0f172a;
   --card: #1e293b;
@@ -801,4 +827,34 @@ tr:hover td {
 .loan-stat-label {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .navbar { flex-direction: column; gap: 0.5rem; height: auto; padding: 12px 16px; }
+  .navbar-links { flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+  .dashboard-cards { grid-template-columns: 1fr; }
+  .calendar-grid { font-size: 0.7rem; }
+  .calendar-cell { min-height: 60px; padding: 2px; }
+  .page-container { padding: 1rem; }
+  .main-content { padding: 16px; }
+  .form-row { flex-direction: column; }
+  .form-row-3 { grid-template-columns: 1fr; }
+  .card { padding: 1rem; }
+  .loan-chart { height: 200px; }
+  .reports-charts { flex-direction: column; }
+  .export-buttons { flex-direction: column; }
+  table { font-size: 0.85rem; }
+  th, td { padding: 0.4rem; }
+  .card-grid { grid-template-columns: 1fr 1fr; }
+  .loan-stats { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .navbar-links a { font-size: 0.8rem; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; }
+  .page-title { font-size: 1.3rem; }
+  .card-grid { grid-template-columns: 1fr; }
+  .loan-stats { grid-template-columns: 1fr; }
 }

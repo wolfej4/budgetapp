@@ -9,27 +9,39 @@ export default function Dashboard() {
   const [bills, setBills] = useState([]);
   const [splits, setSplits] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [income, setIncome] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-indexed
+
   useEffect(() => {
-    Promise.all([get('/bills'), get('/split-payments'), get('/loans')]).then(([b, s, l]) => {
+    Promise.all([
+      get('/bills'),
+      get('/split-payments'),
+      get('/loans'),
+      get(`/income?year=${currentYear}&month=${currentMonth}`)
+    ]).then(([b, s, l, inc]) => {
       setBills(Array.isArray(b) ? b : []);
       setSplits(Array.isArray(s) ? s : []);
       setLoans(Array.isArray(l) ? l : []);
+      setIncome(Array.isArray(inc) ? inc : []);
       setLoading(false);
     });
   }, []);
 
-  const today = new Date();
   const currentDay = today.getDate();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
 
   const totalMonthlyBills = bills
     .filter(b => b.recurrence === 'monthly')
     .reduce((sum, b) => sum + b.amount, 0);
+
+  const incomeThisMonth = income.reduce((s, i) => s + i.amount, 0);
+  const expensesThisMonth = totalMonthlyBills + loans.reduce((s, l) => s + l.monthly_payment, 0);
+  const netCashFlow = incomeThisMonth - expensesThisMonth;
 
   const totalSplitRemaining = splits.reduce((sum, sp) => {
     const unpaid = (sp.installments || []).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0);
@@ -108,6 +120,27 @@ export default function Dashboard() {
           <div className="card-label">Total Monthly Outgoing</div>
           <div className="card-value">{fmt(totalMonthlyBills + loans.reduce((s, l) => s + l.monthly_payment, 0))}</div>
           <div className="card-sub">Bills + loan payments</div>
+        </div>
+      </div>
+
+      {/* Cash Flow Card */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="section-title" style={{ marginBottom: 16 }}>Cash Flow — This Month</div>
+        <div style={{ fontFamily: 'monospace', fontSize: 15, lineHeight: 2 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Income this month:</span>
+            <span style={{ color: 'var(--success)', fontWeight: 600 }}>{fmt(incomeThisMonth)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Expenses this month:</span>
+            <span style={{ color: 'var(--danger)', fontWeight: 600 }}>-{fmt(expensesThisMonth)}</span>
+          </div>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
+            <span style={{ fontWeight: 600 }}>Net:</span>
+            <span style={{ fontWeight: 700, color: netCashFlow >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+              {netCashFlow >= 0 ? '+' : ''}{fmt(netCashFlow)}
+            </span>
+          </div>
         </div>
       </div>
 
