@@ -1,23 +1,40 @@
 const nodemailer = require('nodemailer');
 
-function getTransporter() {
-  if (!process.env.SMTP_HOST) return null;
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+function getSmtpConfig(db) {
+  const rows = db.prepare('SELECT key, value FROM app_settings WHERE key LIKE ?').all('smtp_%');
+  const dbCfg = {};
+  for (const row of rows) dbCfg[row.key] = row.value;
+
+  // Env vars take precedence over DB settings
+  return {
+    host:  process.env.SMTP_HOST || dbCfg.smtp_host || '',
+    port:  parseInt(process.env.SMTP_PORT || dbCfg.smtp_port) || 587,
+    user:  process.env.SMTP_USER || dbCfg.smtp_user || '',
+    pass:  process.env.SMTP_PASS || dbCfg.smtp_pass || '',
+    from:  process.env.SMTP_FROM || dbCfg.smtp_from || '',
+  };
+}
+
+function getTransporter(db) {
+  const cfg = getSmtpConfig(db);
+  if (!cfg.host) return null;
+  return {
+    transporter: nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      auth: { user: cfg.user, pass: cfg.pass },
+    }),
+    from: cfg.from || cfg.user,
+  };
 }
 
 async function sendReminderForUser(db, user, isTest = false) {
-  const transporter = getTransporter();
-  if (!transporter) {
+  const result = getTransporter(db);
+  if (!result) {
     console.warn('SMTP not configured — skipping reminder email');
     return;
   }
+  const { transporter, from } = result;
 
   const today = new Date();
   const targetDate = new Date(today.getTime() + 3 * 86400000);
@@ -45,9 +62,7 @@ async function sendReminderForUser(db, user, isTest = false) {
 
   if (upcomingBills.length > 0) {
     html += `<h3>Bills</h3><ul>`;
-    for (const b of upcomingBills) {
-      html += `<li>${b.name}: $${b.amount.toFixed(2)}</li>`;
-    }
+    for (const b of upcomingBills) html += `<li>${b.name}: $${b.amount.toFixed(2)}</li>`;
     html += `</ul>`;
   }
 
@@ -59,12 +74,12 @@ async function sendReminderForUser(db, user, isTest = false) {
     html += `</ul>`;
   }
 
-  if (!isTest && upcomingBills.length === 0 && upcomingInstallments.length === 0) {
+  if (isTest && upcomingBills.length === 0 && upcomingInstallments.length === 0) {
     html += `<p>No upcoming payments found.</p>`;
   }
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from,
     to: user.email,
     subject: `BudgetApp: Upcoming Payment Reminder`,
     html,
@@ -72,6 +87,8 @@ async function sendReminderForUser(db, user, isTest = false) {
 }
 
 async function runReminders(db) {
+  const cfg = getSmtpConfig(db);
+  if (!cfg.host) return; // silently skip if still not configured
   const users = db.prepare('SELECT * FROM users').all();
   for (const user of users) {
     try {
@@ -83,10 +100,11 @@ async function runReminders(db) {
 }
 
 function scheduleReminders(db) {
-  if (!process.env.SMTP_HOST) {
-    console.warn('SMTP_HOST not set — bill reminders disabled');
-    return;
+  const cfg = getSmtpConfig(db);
+  if (!cfg.host) {
+    console.warn('SMTP not configured — bill reminders will activate once SMTP is set in Admin → Settings');
   }
+  // Always schedule — config may be added via admin UI after startup
   runReminders(db);
   setInterval(() => runReminders(db), 24 * 60 * 60 * 1000);
 }
