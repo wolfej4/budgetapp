@@ -107,6 +107,25 @@ CREATE TABLE IF NOT EXISTS savings_goals (
   notes TEXT,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `);
+
+// Safely add role column to users
+const userCols = db.prepare('PRAGMA table_info(users)').all();
+if (!userCols.find(c => c.name === 'role')) {
+  db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
+}
+
+// Safely add disabled column to users
+if (!userCols.find(c => c.name === 'disabled')) {
+  db.prepare('ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0').run();
+}
+
+// Seed default settings
+db.prepare("INSERT OR IGNORE INTO app_settings VALUES ('registration_open', '1')").run();
 
 module.exports = db;

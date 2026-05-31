@@ -19,6 +19,7 @@ app.use('/api/savings-goals', require('./routes/savingsGoals'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/export', require('./routes/exportData'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
