@@ -37,7 +37,6 @@ export default function Navbar() {
       )}
       <nav className="navbar">
         <div className="navbar-brand">
-          <span className="brand-icon">💰</span>
           <span className="brand-name">BudgetBuddy</span>
         </div>
         <div className="navbar-links">
@@ -61,7 +60,7 @@ export default function Navbar() {
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             style={{ fontSize: 18 }}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? 'Light' : 'Dark'}
           </button>
           <button className="btn btn-ghost" onClick={logout}>Logout</button>
         </div>
