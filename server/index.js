@@ -3,6 +3,8 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const app = express();
+const db = require('./db');
+const { scheduleReminders } = require('./reminders');
 
 app.use(cors());
 app.use(express.json());
@@ -12,6 +14,11 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/split-payments', require('./routes/splitPayments'));
 app.use('/api/loans', require('./routes/loans'));
 app.use('/api/budgets', require('./routes/budgets'));
+app.use('/api/income', require('./routes/income'));
+app.use('/api/savings-goals', require('./routes/savingsGoals'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/export', require('./routes/exportData'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
@@ -22,5 +29,7 @@ if (fs.existsSync(clientDist)) {
   app.get('*', (req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 }
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 6000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+scheduleReminders(db);

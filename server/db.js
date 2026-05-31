@@ -83,6 +83,30 @@ CREATE TABLE IF NOT EXISTS loans (
   category TEXT DEFAULT 'auto',
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS income (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  amount REAL NOT NULL,
+  date TEXT NOT NULL,
+  recurrence TEXT DEFAULT 'one-time',
+  category TEXT DEFAULT 'job',
+  notes TEXT,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS savings_goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  target_amount REAL NOT NULL,
+  current_amount REAL NOT NULL DEFAULT 0,
+  target_date TEXT,
+  category TEXT DEFAULT 'general',
+  notes TEXT,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
 `);
 
 module.exports = db;
