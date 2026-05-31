@@ -13,6 +13,11 @@ import Income from './pages/Income.jsx';
 import SavingsGoals from './pages/SavingsGoals.jsx';
 import Reports from './pages/Reports.jsx';
 import Settings from './pages/Settings.jsx';
+import AdminLayout from './pages/admin/AdminLayout.jsx';
+import AdminUsers from './pages/admin/AdminUsers.jsx';
+import AdminStats from './pages/admin/AdminStats.jsx';
+import AdminBudgets from './pages/admin/AdminBudgets.jsx';
+import AdminSettings from './pages/admin/AdminSettings.jsx';
 
 export default function App() {
   return (
@@ -31,6 +36,13 @@ export default function App() {
           <Route path="savings-goals" element={<SavingsGoals />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/users" replace />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="stats" element={<AdminStats />} />
+            <Route path="budgets" element={<AdminBudgets />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -5,15 +5,36 @@ import useTheme from '../hooks/useTheme.js';
 export default function Navbar() {
   const navigate = useNavigate();
   const [theme, toggleTheme] = useTheme();
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = currentUser.role === 'admin';
+  const impersonatingData = localStorage.getItem('impersonating')
+    ? JSON.parse(localStorage.getItem('impersonating'))
+    : null;
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('impersonateToken');
+    localStorage.removeItem('impersonating');
     navigate('/login');
+  };
+
+  const stopImpersonating = () => {
+    localStorage.removeItem('impersonateToken');
+    localStorage.removeItem('impersonating');
+    window.location.href = '/admin/users';
   };
 
   return (
     <div className="app-layout">
+      {impersonatingData && (
+        <div className="impersonation-banner">
+          Impersonating: <strong>{impersonatingData.name}</strong>
+          <button className="btn btn-sm" onClick={stopImpersonating} style={{ marginLeft: 16 }}>
+            Stop Impersonating
+          </button>
+        </div>
+      )}
       <nav className="navbar">
         <div className="navbar-brand">
           <span className="brand-icon">💰</span>
@@ -29,6 +50,9 @@ export default function Navbar() {
           <NavLink to="/savings-goals" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Savings</NavLink>
           <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Reports</NavLink>
           <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Settings</NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Admin</NavLink>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
