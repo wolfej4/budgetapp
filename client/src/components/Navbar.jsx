@@ -60,7 +60,7 @@ export default function Navbar() {
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             style={{ fontSize: 18 }}
           >
-            {theme === 'dark' ? 'Light' : 'Dark'}
+            {theme === 'dark' ? '☀️' : '🌙'}
           </button>
           <button className="btn btn-ghost" onClick={logout}>Logout</button>
         </div>
