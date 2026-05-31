@@ -71,7 +71,7 @@ router.post('/users/:id/reset-password', (req, res) => {
 router.post('/users/:id/impersonate', (req, res) => {
   const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  const token = jwt.sign({ ...user, impersonated: true }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ ...user, impersonated: true, originalId: req.user.id }, JWT_SECRET, { expiresIn: '1h' });
   res.json({ token, user });
 });
 
