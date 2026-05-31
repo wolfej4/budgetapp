@@ -18,8 +18,8 @@ COPY --from=client-build /app/client/dist ./client/dist
 
 RUN mkdir -p /app/data
 
-ENV PORT=6000
+ENV PORT=3001
 ENV JWT_SECRET=change-me-in-production
-EXPOSE 6000
+EXPOSE 3001
 
 CMD ["node", "server/index.js"]
