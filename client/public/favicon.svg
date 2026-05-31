@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" fill="#6366f1"/>
+
+  <!-- Wallet body -->
+  <rect x="5" y="10" width="20" height="14" rx="2.5" fill="white" opacity="0.95"/>
+
+  <!-- Wallet flap / top strip -->
+  <rect x="5" y="10" width="20" height="4" rx="2" fill="white"/>
+  <rect x="5" y="12" width="20" height="2" fill="white"/>
+
+  <!-- Card slot line -->
+  <rect x="8" y="17" width="8" height="1.5" rx="0.75" fill="#6366f1" opacity="0.5"/>
+
+  <!-- Coin circle on right -->
+  <circle cx="21" cy="18.5" r="3" fill="#6366f1" opacity="0.85"/>
+  <text x="21" y="22" text-anchor="middle" font-size="5" font-family="sans-serif" font-weight="bold" fill="white" dy="-2.5">$</text>
+</svg>
