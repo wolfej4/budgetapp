@@ -67,7 +67,7 @@ export default function Navbar() {
           {isAdmin && navLink('/admin', 'Admin')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="navbar-actions">
           <button
             className="btn btn-icon"
             onClick={toggleTheme}
