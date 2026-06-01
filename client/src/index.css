@@ -880,6 +880,11 @@ tr:hover td {
   .hamburger { display: flex; }
   .desktop-only { display: none; }
   .mobile-menu { display: flex; }
+  .admin-nav-links { display: none; }
+  .admin-hamburger { display: flex; }
+  .admin-mobile-menu { display: flex; }
+  .admin-mobile-menu .admin-nav-link { padding: 12px 24px; border-radius: 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .admin-mobile-menu .admin-nav-link:last-child { border-bottom: none; }
   .dashboard-cards { grid-template-columns: 1fr; }
   .calendar-grid { font-size: 0.7rem; }
   .calendar-cell { min-height: 60px; padding: 2px; }
@@ -916,6 +921,24 @@ tr:hover td {
   align-items: center;
   gap: 4px;
   padding: 12px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-nav-links {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.admin-hamburger {
+  display: none;
+  margin-left: auto;
+}
+
+.admin-mobile-menu {
+  display: none;
+  flex-direction: column;
   background: var(--card);
   border-bottom: 1px solid var(--border);
 }
