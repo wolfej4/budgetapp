@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import useTheme from '../hooks/useTheme.js';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [theme, toggleTheme] = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = currentUser.role === 'admin';
   const impersonatingData = localStorage.getItem('impersonating')
@@ -25,6 +26,18 @@ export default function Navbar() {
     window.location.href = '/admin/users';
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
+  const navLink = (to, label) => (
+    <NavLink
+      to={to}
+      className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+      onClick={closeMenu}
+    >
+      {label}
+    </NavLink>
+  );
+
   return (
     <div className="app-layout">
       {impersonatingData && (
@@ -39,20 +52,21 @@ export default function Navbar() {
         <div className="navbar-brand">
           <span className="brand-name">BudgetBuddy</span>
         </div>
+
+        {/* Desktop links */}
         <div className="navbar-links">
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Dashboard</NavLink>
-          <NavLink to="/bills" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Bills</NavLink>
-          <NavLink to="/split-payments" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Split Payments</NavLink>
-          <NavLink to="/loans" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Loans</NavLink>
-          <NavLink to="/budgets" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Budgets</NavLink>
-          <NavLink to="/income" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Income</NavLink>
-          <NavLink to="/savings-goals" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Savings</NavLink>
-          <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Reports</NavLink>
-          <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Settings</NavLink>
-          {isAdmin && (
-            <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Admin</NavLink>
-          )}
+          {navLink('/dashboard', 'Dashboard')}
+          {navLink('/bills', 'Bills')}
+          {navLink('/split-payments', 'Split Payments')}
+          {navLink('/loans', 'Loans')}
+          {navLink('/budgets', 'Budgets')}
+          {navLink('/income', 'Income')}
+          {navLink('/savings-goals', 'Savings')}
+          {navLink('/reports', 'Reports')}
+          {navLink('/settings', 'Settings')}
+          {isAdmin && navLink('/admin', 'Admin')}
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             className="btn btn-icon"
@@ -62,9 +76,46 @@ export default function Navbar() {
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button className="btn btn-ghost" onClick={logout}>Logout</button>
+          <button className="btn btn-ghost desktop-only" onClick={logout}>Logout</button>
+
+          {/* Hamburger button — mobile only */}
+          <button
+            className="btn btn-icon hamburger"
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              </svg>
+            )}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          {navLink('/dashboard', 'Dashboard')}
+          {navLink('/bills', 'Bills')}
+          {navLink('/split-payments', 'Split Payments')}
+          {navLink('/loans', 'Loans')}
+          {navLink('/budgets', 'Budgets')}
+          {navLink('/income', 'Income')}
+          {navLink('/savings-goals', 'Savings')}
+          {navLink('/reports', 'Reports')}
+          {navLink('/settings', 'Settings')}
+          {isAdmin && navLink('/admin', 'Admin')}
+          <button className="nav-link mobile-logout" onClick={() => { closeMenu(); logout(); }}>
+            Logout
+          </button>
+        </div>
+      )}
+
       <main className="main-content">
         <Outlet />
       </main>
