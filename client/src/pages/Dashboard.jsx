@@ -9,7 +9,8 @@ export default function Dashboard() {
   const [bills, setBills] = useState([]);
   const [splits, setSplits] = useState([]);
   const [loans, setLoans] = useState([]);
-  const [income, setIncome] = useState([]);
+  const [subs, setSubs] = useState([]);
+  const [txs, setTxs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -23,12 +24,14 @@ export default function Dashboard() {
       get('/bills'),
       get('/split-payments'),
       get('/loans'),
-      get(`/income?year=${currentYear}&month=${currentMonth}`)
-    ]).then(([b, s, l, inc]) => {
+      get('/subscriptions'),
+      get(`/transactions?year=${currentYear}&month=${currentMonth}`)
+    ]).then(([b, s, l, su, tx]) => {
       setBills(Array.isArray(b) ? b : []);
       setSplits(Array.isArray(s) ? s : []);
       setLoans(Array.isArray(l) ? l : []);
-      setIncome(Array.isArray(inc) ? inc : []);
+      setSubs(Array.isArray(su) ? su : []);
+      setTxs(Array.isArray(tx) ? tx : []);
       setLoading(false);
     });
   }, []);
@@ -39,9 +42,30 @@ export default function Dashboard() {
     .filter(b => b.recurrence === 'monthly')
     .reduce((sum, b) => sum + b.amount, 0);
 
-  const incomeThisMonth = income.reduce((s, i) => s + i.amount, 0);
-  const expensesThisMonth = totalMonthlyBills + loans.reduce((s, l) => s + l.monthly_payment, 0);
-  const netCashFlow = incomeThisMonth - expensesThisMonth;
+  const loanPaymentsMonthly = loans.reduce((s, l) => s + l.monthly_payment, 0);
+
+  // Split installments due this calendar month (cash leaving this month, paid or not)
+  const splitDueThisMonth = splits.reduce((sum, sp) => {
+    return sum + (sp.installments || []).reduce((s, inst) => {
+      const [y, m] = (inst.due_date || '').split('-').map(Number);
+      return (y === currentYear && m - 1 === currentMonth) ? s + inst.amount : s;
+    }, 0);
+  }, 0);
+
+  // Active subscriptions: monthly amount, plus yearly ones renewing this month
+  const subsThisMonth = subs.filter(s => s.active).reduce((sum, s) => {
+    if (s.billing_cycle === 'monthly') return sum + s.amount;
+    const [, m] = (s.renewal_date || '').split('-').map(Number);
+    return (m - 1 === currentMonth) ? sum + s.amount : sum;
+  }, 0);
+
+  // Actual cash flow from the transaction ledger
+  const incomeThisMonth = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const spendingThisMonth = txs.filter(t => t.amount < 0).reduce((s, t) => s - t.amount, 0);
+  const netCashFlow = incomeThisMonth - spendingThisMonth;
+
+  // Committed obligations this month (planned, independent of logged transactions)
+  const committedThisMonth = totalMonthlyBills + loanPaymentsMonthly + splitDueThisMonth + subsThisMonth;
 
   const totalSplitRemaining = splits.reduce((sum, sp) => {
     const unpaid = (sp.installments || []).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0);
@@ -127,19 +151,25 @@ export default function Dashboard() {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="section-title" style={{ marginBottom: 16 }}>Cash Flow — This Month</div>
         <div style={{ fontFamily: 'monospace', fontSize: 15, lineHeight: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
-            <span style={{ color: 'var(--text-muted)' }}>Income this month:</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 360 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Income (transactions):</span>
             <span style={{ color: 'var(--success)', fontWeight: 600 }}>{fmt(incomeThisMonth)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
-            <span style={{ color: 'var(--text-muted)' }}>Expenses this month:</span>
-            <span style={{ color: 'var(--danger)', fontWeight: 600 }}>-{fmt(expensesThisMonth)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: 360 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Spending (transactions):</span>
+            <span style={{ color: 'var(--danger)', fontWeight: 600 }}>-{fmt(spendingThisMonth)}</span>
           </div>
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between', maxWidth: 360 }}>
             <span style={{ fontWeight: 600 }}>Net:</span>
             <span style={{ fontWeight: 700, color: netCashFlow >= 0 ? 'var(--success)' : 'var(--danger)' }}>
               {netCashFlow >= 0 ? '+' : ''}{fmt(netCashFlow)}
             </span>
+          </div>
+        </div>
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px dashed var(--border)', fontSize: 13, color: 'var(--text-muted)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Committed this month: {fmt(committedThisMonth)}</div>
+          <div>
+            Bills {fmt(totalMonthlyBills)} &bull; Loans {fmt(loanPaymentsMonthly)} &bull; Split payments {fmt(splitDueThisMonth)} &bull; Subscriptions {fmt(subsThisMonth)}
           </div>
         </div>
       </div>

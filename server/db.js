@@ -113,6 +113,32 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  payee TEXT NOT NULL,
+  category TEXT DEFAULT 'Other',
+  amount REAL NOT NULL,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  amount REAL NOT NULL,
+  billing_cycle TEXT DEFAULT 'monthly',
+  due_day INTEGER,
+  renewal_date TEXT,
+  category TEXT DEFAULT 'other',
+  active INTEGER DEFAULT 1,
+  notes TEXT,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
 `);
 
 // Safely add role column to users
@@ -130,6 +156,18 @@ if (!userCols.find(c => c.name === 'disabled')) {
 const splitCols = db.prepare('PRAGMA table_info(split_payments)').all();
 if (!splitCols.find(c => c.name === 'marketplace')) {
   db.prepare('ALTER TABLE split_payments ADD COLUMN marketplace TEXT').run();
+}
+
+// One-time migration: copy legacy income entries into transactions as inflows
+const txCount = db.prepare('SELECT COUNT(*) as c FROM transactions').get().c;
+if (txCount === 0) {
+  const incomeRows = db.prepare('SELECT * FROM income').all();
+  const insertTx = db.prepare(
+    'INSERT INTO transactions (user_id, date, payee, category, amount, notes) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  for (const row of incomeRows) {
+    insertTx.run(row.user_id, row.date, row.source, 'Income', Math.abs(row.amount), row.notes || null);
+  }
 }
 
 // Seed default settings

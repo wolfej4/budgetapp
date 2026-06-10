@@ -37,6 +37,10 @@ router.get('/csv', (req, res) => {
     rows = db.prepare('SELECT * FROM income WHERE user_id = ?').all(userId);
     headers = ['id', 'source', 'amount', 'date', 'recurrence', 'category', 'notes'];
     filename = 'income.csv';
+  } else if (type === 'transactions') {
+    rows = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC').all(userId);
+    headers = ['id', 'date', 'payee', 'category', 'amount', 'notes'];
+    filename = 'transactions.csv';
   } else if (type === 'loans') {
     rows = db.prepare('SELECT * FROM loans WHERE user_id = ?').all(userId);
     headers = ['id', 'name', 'original_amount', 'current_balance', 'interest_rate', 'monthly_payment', 'start_date', 'category'];

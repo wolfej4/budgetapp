@@ -60,8 +60,9 @@ export default function Navbar() {
           {navLink('/split-payments', 'Split Payments')}
           {navLink('/loans', 'Loans')}
           {navLink('/budgets', 'Budgets')}
-          {navLink('/income', 'Income')}
+          {navLink('/transactions', 'Transactions')}
           {navLink('/savings-goals', 'Savings')}
+          {navLink('/subscriptions', 'Subscriptions')}
           {navLink('/reports', 'Reports')}
           {navLink('/settings', 'Settings')}
           {isAdmin && navLink('/admin', 'Admin')}
@@ -105,8 +106,9 @@ export default function Navbar() {
           {navLink('/split-payments', 'Split Payments')}
           {navLink('/loans', 'Loans')}
           {navLink('/budgets', 'Budgets')}
-          {navLink('/income', 'Income')}
+          {navLink('/transactions', 'Transactions')}
           {navLink('/savings-goals', 'Savings')}
+          {navLink('/subscriptions', 'Subscriptions')}
           {navLink('/reports', 'Reports')}
           {navLink('/settings', 'Settings')}
           {isAdmin && navLink('/admin', 'Admin')}

@@ -166,7 +166,7 @@ export default function Reports() {
         <div className="section-title" style={{ marginBottom: 12 }}>Export</div>
         <div className="export-buttons" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <a className="btn btn-ghost" href={`${csvBase}&type=bills`} download>⬇ Bills CSV</a>
-          <a className="btn btn-ghost" href={`${csvBase}&type=income`} download>⬇ Income CSV</a>
+          <a className="btn btn-ghost" href={`${csvBase}&type=transactions`} download>⬇ Transactions CSV</a>
           <a className="btn btn-ghost" href={`${csvBase}&type=loans`} download>⬇ Loans CSV</a>
           <a className="btn btn-ghost" href={`${csvBase}&type=split-payments`} download>⬇ Split Payments CSV</a>
           <a className="btn btn-primary" href={pdfUrl} download>⬇ Monthly PDF Report</a>

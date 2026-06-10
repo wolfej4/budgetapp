@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const auth = require('../middleware/auth');
-const { expandRecurring } = require('./income');
 
 router.use(auth);
 
@@ -50,14 +49,16 @@ function getMonthData(userId, year, month) {
   const loansByName = {};
   for (const l of loans) loansByName[l.name] = l.monthly_payment;
 
-  // Income
-  const allIncome = db.prepare('SELECT * FROM income WHERE user_id = ?').all(userId);
-  const incomeExpanded = expandRecurring(allIncome, year, month - 1);
-  const incomeTotal = incomeExpanded.reduce((s, i) => s + i.amount, 0);
+  // Income: positive transactions from the ledger for this month
+  const prefix = `${year}-${String(month).padStart(2, '0')}`;
+  const inflows = db.prepare(
+    "SELECT * FROM transactions WHERE user_id = ? AND amount > 0 AND date LIKE ? || '%'"
+  ).all(userId, prefix);
+  const incomeTotal = inflows.reduce((s, t) => s + t.amount, 0);
   const incomeByCategory = {};
-  for (const i of incomeExpanded) {
-    const cat = i.category || 'other';
-    incomeByCategory[cat] = (incomeByCategory[cat] || 0) + i.amount;
+  for (const t of inflows) {
+    const cat = t.category || 'Other';
+    incomeByCategory[cat] = (incomeByCategory[cat] || 0) + t.amount;
   }
 
   const totalExpenses = billsTotal + splitTotal + loansTotal;
