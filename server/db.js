@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS split_payments (
   budget_id INTEGER,
   provider TEXT NOT NULL,
   description TEXT NOT NULL,
+  marketplace TEXT,
   total_amount REAL NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id)
@@ -123,6 +124,12 @@ if (!userCols.find(c => c.name === 'role')) {
 // Safely add disabled column to users
 if (!userCols.find(c => c.name === 'disabled')) {
   db.prepare('ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0').run();
+}
+
+// Safely add marketplace column to split_payments
+const splitCols = db.prepare('PRAGMA table_info(split_payments)').all();
+if (!splitCols.find(c => c.name === 'marketplace')) {
+  db.prepare('ALTER TABLE split_payments ADD COLUMN marketplace TEXT').run();
 }
 
 // Seed default settings
