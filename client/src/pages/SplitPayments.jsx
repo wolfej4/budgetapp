@@ -39,6 +39,12 @@ export default function SplitPayments() {
   const [autoSplit, setAutoSplit] = useState({ count: '4', frequency: 'biweekly', firstDate: todayStr() });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [view, setView] = useState(() => localStorage.getItem('splitPaymentsView') || 'list');
+
+  const switchView = (v) => {
+    setView(v);
+    localStorage.setItem('splitPaymentsView', v);
+  };
 
   const load = () => {
     get('/split-payments').then(data => {
@@ -162,9 +168,40 @@ export default function SplitPayments() {
     <div>
       <div className="page-header">
         <div className="page-title">Split Payments</div>
-        <button className="btn btn-primary" onClick={openAdd}>
-          + Add Plan
-        </button>
+        <div className="flex-gap">
+          <div className="view-toggle" role="group" aria-label="Layout">
+            <button
+              type="button"
+              className={view === 'list' ? 'active' : ''}
+              onClick={() => switchView('list')}
+              title="List view"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="1" y="2" width="14" height="2.4" rx="1.2"/>
+                <rect x="1" y="6.8" width="14" height="2.4" rx="1.2"/>
+                <rect x="1" y="11.6" width="14" height="2.4" rx="1.2"/>
+              </svg>
+              List
+            </button>
+            <button
+              type="button"
+              className={view === 'grid' ? 'active' : ''}
+              onClick={() => switchView('grid')}
+              title="Grid view"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="1" y="1" width="6.2" height="6.2" rx="1.2"/>
+                <rect x="8.8" y="1" width="6.2" height="6.2" rx="1.2"/>
+                <rect x="1" y="8.8" width="6.2" height="6.2" rx="1.2"/>
+                <rect x="8.8" y="8.8" width="6.2" height="6.2" rx="1.2"/>
+              </svg>
+              Grid
+            </button>
+          </div>
+          <button className="btn btn-primary" onClick={openAdd}>
+            + Add Plan
+          </button>
+        </div>
       </div>
 
       {plans.length === 0 ? (
@@ -183,10 +220,40 @@ export default function SplitPayments() {
                 <span>{providerPlans.length} plan{providerPlans.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
+            <div className={view === 'grid' ? 'plan-grid' : ''}>
             {providerPlans.map(plan => {
               const totalPaid = (plan.installments || []).filter(i => i.paid).reduce((s, i) => s + i.amount, 0);
               const totalUnpaid = (plan.installments || []).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0);
               const pct = plan.total_amount > 0 ? Math.round((totalPaid / plan.total_amount) * 100) : 0;
+              if (view === 'grid') {
+                const nextUnpaid = (plan.installments || []).find(i => !i.paid);
+                return (
+                  <div className="plan-card plan-card-sq" key={plan.id}>
+                    <div className="flex-between">
+                      <span className={`badge ${PROVIDER_BADGE[plan.provider] || 'badge-other'}`}>{plan.provider}</span>
+                      <span style={{ fontWeight: 700 }}>{fmt(plan.total_amount)}</span>
+                    </div>
+                    <div className="plan-sq-desc">{plan.description}</div>
+                    {plan.marketplace && <div className="plan-sq-market">{plan.marketplace}</div>}
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: pct + '%' }} />
+                    </div>
+                    <div className="plan-meta">{pct}% paid &bull; {fmt(totalUnpaid)} left</div>
+                    <div className="plan-sq-next">
+                      {nextUnpaid ? <>Next: <strong>{fmt(nextUnpaid.amount)}</strong> on {nextUnpaid.due_date}</> : 'All paid'}
+                    </div>
+                    <div className="flex-gap" style={{ marginTop: 'auto' }}>
+                      {nextUnpaid && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleMarkPaid(plan.id, nextUnpaid.id, true)}>
+                          Pay next
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(plan)}>Edit</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(plan.id)}>Delete</button>
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div className="plan-card" key={plan.id}>
                   <div className="plan-header">
@@ -226,6 +293,7 @@ export default function SplitPayments() {
                 </div>
               );
             })}
+            </div>
           </div>
         ))
       )}
