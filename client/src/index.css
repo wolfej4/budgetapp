@@ -498,6 +498,7 @@ tr:hover td {
 .badge-zip { background: #0ea5e9; color: #fff; }
 .badge-klarna { background: #ec4899; color: #fff; }
 .badge-affirm { background: #16a34a; color: #fff; }
+.badge-afterpay { background: #b2fce4; color: #0f172a; }
 .badge-other { background: var(--text-dim); color: #fff; }
 
 /* Installment timeline */

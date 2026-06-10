@@ -5,8 +5,8 @@ function fmt(n) {
   return '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const PROVIDERS = ['Zip', 'Klarna', 'Affirm', 'Other'];
-const PROVIDER_BADGE = { Zip: 'badge-zip', Klarna: 'badge-klarna', Affirm: 'badge-affirm', Other: 'badge-other' };
+const PROVIDERS = ['Zip', 'Klarna', 'Affirm', 'Afterpay', 'Other'];
+const PROVIDER_BADGE = { Zip: 'badge-zip', Klarna: 'badge-klarna', Affirm: 'badge-affirm', Afterpay: 'badge-afterpay', Other: 'badge-other' };
 
 const EMPTY_FORM = { provider: 'Zip', description: '', total_amount: '' };
 const EMPTY_INST = { amount: '', due_date: '' };
