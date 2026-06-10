@@ -45,7 +45,8 @@ router.delete('/users/:id', (req, res) => {
   db.prepare('DELETE FROM bills WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM split_payments WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM loans WHERE user_id = ?').run(id);
-  db.prepare('DELETE FROM income WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM transactions WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM subscriptions WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM savings_goals WHERE user_id = ?').run(id);
   db.prepare('DELETE FROM budget_members WHERE user_id = ?').run(id);
   // Delete budgets owned by user
@@ -82,7 +83,7 @@ router.get('/stats', (req, res) => {
   const totalLoans = db.prepare('SELECT COUNT(*) as c FROM loans').get().c;
   const totalLoanVolume = db.prepare('SELECT COALESCE(SUM(original_amount), 0) as s FROM loans').get().s;
   const totalSplitPayments = db.prepare('SELECT COUNT(*) as c FROM split_payments').get().c;
-  const totalIncome = db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM income').get().s;
+  const totalTransactions = db.prepare('SELECT COUNT(*) as c FROM transactions').get().c;
   const totalSavingsGoals = db.prepare('SELECT COUNT(*) as c FROM savings_goals').get().c;
 
   const now = new Date();
@@ -103,7 +104,7 @@ router.get('/stats', (req, res) => {
     totalLoans,
     totalLoanVolume,
     totalSplitPayments,
-    totalIncome,
+    totalTransactions,
     totalSavingsGoals,
     newUsersThisMonth,
     signupsByMonth

@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require('../db');
 const auth = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
-const { expandRecurring } = require('./income');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-prod';
 
@@ -33,10 +32,6 @@ router.get('/csv', (req, res) => {
     rows = db.prepare('SELECT * FROM bills WHERE user_id = ?').all(userId);
     headers = ['id', 'name', 'amount', 'due_day', 'recurrence', 'due_date', 'category', 'notes'];
     filename = 'bills.csv';
-  } else if (type === 'income') {
-    rows = db.prepare('SELECT * FROM income WHERE user_id = ?').all(userId);
-    headers = ['id', 'source', 'amount', 'date', 'recurrence', 'category', 'notes'];
-    filename = 'income.csv';
   } else if (type === 'transactions') {
     rows = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC').all(userId);
     headers = ['id', 'date', 'payee', 'category', 'amount', 'notes'];
@@ -57,7 +52,7 @@ router.get('/csv', (req, res) => {
     headers = ['provider', 'description', 'total_amount', 'installment_amount', 'due_date', 'paid'];
     filename = 'split-payments.csv';
   } else {
-    return res.status(400).json({ error: 'type must be bills|income|loans|split-payments' });
+    return res.status(400).json({ error: 'type must be bills|transactions|loans|split-payments' });
   }
 
   const escape = v => {
@@ -93,8 +88,9 @@ router.get('/pdf', (req, res) => {
 
   const bills = db.prepare(`SELECT * FROM bills WHERE user_id = ? AND recurrence='monthly'`).all(userId);
   const loans = db.prepare('SELECT * FROM loans WHERE user_id = ?').all(userId);
-  const allIncome = db.prepare('SELECT * FROM income WHERE user_id = ?').all(userId);
-  const incomeExpanded = expandRecurring(allIncome, year, month - 1);
+  const monthTxs = db.prepare(
+    "SELECT * FROM transactions WHERE user_id = ? AND date >= ? AND date < ? ORDER BY date ASC"
+  ).all(userId, monthStart, monthEnd);
   const installments = db.prepare(`
     SELECT spi.*, sp.description, sp.provider FROM split_payment_installments spi
     JOIN split_payments sp ON spi.split_payment_id = sp.id
@@ -111,14 +107,27 @@ router.get('/pdf', (req, res) => {
 
   const fmt = n => '$' + Number(n || 0).toFixed(2);
 
-  doc.fontSize(14).text('Income', { underline: true });
+  const inflows = monthTxs.filter(t => t.amount > 0);
+  const outflows = monthTxs.filter(t => t.amount < 0);
+
+  doc.fontSize(14).text('Income (transactions)', { underline: true });
   doc.fontSize(11);
   let incomeTotal = 0;
-  for (const i of incomeExpanded) {
-    doc.text(`  ${i.source} (${i.category}): ${fmt(i.amount)}`);
-    incomeTotal += i.amount;
+  for (const t of inflows) {
+    doc.text(`  ${t.date}  ${t.payee} (${t.category}): ${fmt(t.amount)}`);
+    incomeTotal += t.amount;
   }
-  doc.text(`  Total: ${fmt(incomeTotal)}`, { bold: true });
+  doc.text(`  Total: ${fmt(incomeTotal)}`);
+  doc.moveDown();
+
+  doc.fontSize(14).text('Spending (transactions)', { underline: true });
+  doc.fontSize(11);
+  let spendingTotal = 0;
+  for (const t of outflows) {
+    doc.text(`  ${t.date}  ${t.payee} (${t.category}): ${fmt(-t.amount)}`);
+    spendingTotal += -t.amount;
+  }
+  doc.text(`  Total: ${fmt(spendingTotal)}`);
   doc.moveDown();
 
   doc.fontSize(14).text('Bills', { underline: true });
@@ -151,13 +160,13 @@ router.get('/pdf', (req, res) => {
   doc.text(`  Total: ${fmt(loansTotal)}`);
   doc.moveDown();
 
-  const totalExpenses = billsTotal + splitTotal + loansTotal;
-  const net = incomeTotal - totalExpenses;
+  const committed = billsTotal + splitTotal + loansTotal;
   doc.fontSize(14).text('Summary', { underline: true });
   doc.fontSize(11);
-  doc.text(`  Income:   ${fmt(incomeTotal)}`);
-  doc.text(`  Expenses: ${fmt(totalExpenses)}`);
-  doc.text(`  Net:      ${fmt(net)}`);
+  doc.text(`  Income (transactions):    ${fmt(incomeTotal)}`);
+  doc.text(`  Spending (transactions):  ${fmt(spendingTotal)}`);
+  doc.text(`  Net cash flow:            ${fmt(incomeTotal - spendingTotal)}`);
+  doc.text(`  Committed (bills/splits/loans): ${fmt(committed)}`);
 
   doc.end();
 });

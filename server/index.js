@@ -14,7 +14,6 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/split-payments', require('./routes/splitPayments'));
 app.use('/api/loans', require('./routes/loans'));
 app.use('/api/budgets', require('./routes/budgets'));
-app.use('/api/income', require('./routes/income'));
 app.use('/api/savings-goals', require('./routes/savingsGoals'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/export', require('./routes/exportData'));
@@ -29,7 +28,10 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 const clientDist = path.join(__dirname, '../client/dist');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
-  app.get('*', (req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
 }
 
 const PORT = process.env.PORT || 3001;

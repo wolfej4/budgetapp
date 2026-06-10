@@ -23,7 +23,7 @@ export default function AdminStats() {
     { label: 'Total Loans', value: stats.totalLoans, highlight: false },
     { label: 'Loan Volume', value: `$${Number(stats.totalLoanVolume).toLocaleString()}`, highlight: false },
     { label: 'Split Payments', value: stats.totalSplitPayments, highlight: false },
-    { label: 'Total Income', value: `$${Number(stats.totalIncome).toLocaleString()}`, highlight: false },
+    { label: 'Transactions Logged', value: Number(stats.totalTransactions || 0).toLocaleString(), highlight: false },
     { label: 'Savings Goals', value: stats.totalSavingsGoals, highlight: false },
   ];
 

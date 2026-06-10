@@ -85,18 +85,6 @@ CREATE TABLE IF NOT EXISTS loans (
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS income (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  source TEXT NOT NULL,
-  amount REAL NOT NULL,
-  date TEXT NOT NULL,
-  recurrence TEXT DEFAULT 'one-time',
-  category TEXT DEFAULT 'job',
-  notes TEXT,
-  FOREIGN KEY(user_id) REFERENCES users(id)
-);
-
 CREATE TABLE IF NOT EXISTS savings_goals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -158,17 +146,8 @@ if (!splitCols.find(c => c.name === 'marketplace')) {
   db.prepare('ALTER TABLE split_payments ADD COLUMN marketplace TEXT').run();
 }
 
-// One-time migration: copy legacy income entries into transactions as inflows
-const txCount = db.prepare('SELECT COUNT(*) as c FROM transactions').get().c;
-if (txCount === 0) {
-  const incomeRows = db.prepare('SELECT * FROM income').all();
-  const insertTx = db.prepare(
-    'INSERT INTO transactions (user_id, date, payee, category, amount, notes) VALUES (?, ?, ?, ?, ?, ?)'
-  );
-  for (const row of incomeRows) {
-    insertTx.run(row.user_id, row.date, row.source, 'Income', Math.abs(row.amount), row.notes || null);
-  }
-}
+// Income feature removed in favor of the transactions ledger
+db.exec('DROP TABLE IF EXISTS income');
 
 // Seed default settings
 db.prepare("INSERT OR IGNORE INTO app_settings VALUES ('registration_open', '1')").run();
