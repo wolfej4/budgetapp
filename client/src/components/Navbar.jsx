@@ -72,7 +72,7 @@ export default function Navbar() {
       )}
       <nav className="navbar">
         <div className="navbar-brand">
-          <span className="brand-name">BudgetBuddy</span>
+          <NavLink to="/dashboard" className="brand-name" style={{ textDecoration: 'none' }}>BudgetBuddy</NavLink>
         </div>
 
         {/* Desktop links */}
