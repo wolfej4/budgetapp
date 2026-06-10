@@ -102,6 +102,23 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS category_budgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  category TEXT NOT NULL,
+  monthly_limit REAL NOT NULL,
+  UNIQUE(user_id, category),
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  PRIMARY KEY(user_id, key),
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -138,6 +155,12 @@ if (!userCols.find(c => c.name === 'role')) {
 // Safely add disabled column to users
 if (!userCols.find(c => c.name === 'disabled')) {
   db.prepare('ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0').run();
+}
+
+// Safely add due_day column to loans (payment due day, separate from start_date)
+const loanCols = db.prepare('PRAGMA table_info(loans)').all();
+if (!loanCols.find(c => c.name === 'due_day')) {
+  db.prepare('ALTER TABLE loans ADD COLUMN due_day INTEGER').run();
 }
 
 // Safely add marketplace column to split_payments

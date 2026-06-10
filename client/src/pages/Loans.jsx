@@ -10,7 +10,7 @@ const CATEGORIES = ['Auto', 'Home', 'Student', 'Personal', 'Medical', 'Business'
 
 const EMPTY_FORM = {
   name: '', original_amount: '', current_balance: '', interest_rate: '',
-  monthly_payment: '', start_date: '', category: 'auto'
+  monthly_payment: '', start_date: '', category: 'auto', due_day: ''
 };
 
 function LoanDetail({ loan, onClose }) {
@@ -81,6 +81,10 @@ function LoanDetail({ loan, onClose }) {
         <div className="loan-stat">
           <div className="loan-stat-value">{fmt(loan.monthly_payment)}</div>
           <div className="loan-stat-label">Monthly Payment</div>
+        </div>
+        <div className="loan-stat">
+          <div className="loan-stat-value">Day {loan.due_day || (loan.start_date ? Number(loan.start_date.slice(8, 10)) : '—')}</div>
+          <div className="loan-stat-label">Payment Due</div>
         </div>
       </div>
 
@@ -183,7 +187,8 @@ export default function Loans() {
       interest_rate: String(loan.interest_rate),
       monthly_payment: String(loan.monthly_payment),
       start_date: loan.start_date,
-      category: loan.category || 'auto'
+      category: loan.category || 'auto',
+      due_day: loan.due_day ? String(loan.due_day) : ''
     });
     setError('');
     setShowModal(true);
@@ -208,7 +213,8 @@ export default function Loans() {
       interest_rate: parseFloat(form.interest_rate),
       monthly_payment: parseFloat(form.monthly_payment),
       start_date: form.start_date,
-      category: form.category
+      category: form.category,
+      due_day: parseInt(form.due_day, 10) || null
     };
     try {
       let data;
@@ -302,6 +308,10 @@ export default function Loans() {
                 <div className="form-group">
                   <label className="form-label">Start Date</label>
                   <input className="form-input" type="date" required value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Payment Due Day (1-31)</label>
+                  <input className="form-input" type="number" min="1" max="31" value={form.due_day} onChange={e => setForm({...form, due_day: e.target.value})} placeholder="Defaults to start date day" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Category</label>

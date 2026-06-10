@@ -40,10 +40,57 @@ export default function SplitPayments() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [view, setView] = useState(() => localStorage.getItem('splitPaymentsView') || 'list');
+  const [weeklyLimit, setWeeklyLimit] = useState(0);
+  const [limitInput, setLimitInput] = useState('');
 
   const switchView = (v) => {
     setView(v);
     localStorage.setItem('splitPaymentsView', v);
+  };
+
+  useEffect(() => {
+    get('/user-settings').then(s => {
+      const lim = parseFloat(s.bnpl_weekly_limit) || 0;
+      setWeeklyLimit(lim);
+      setLimitInput(lim ? String(lim) : '');
+    });
+  }, []);
+
+  const saveLimit = async () => {
+    const val = parseFloat(limitInput) || 0;
+    await put('/user-settings', { key: 'bnpl_weekly_limit', value: String(val) });
+    setWeeklyLimit(val);
+  };
+
+  // Bucket unpaid installments into 8 weekly windows starting today.
+  // extraRows (from the plan form) and excludePlanId (when editing) let the
+  // modal preview what a new/edited plan does to the load.
+  const weeklyBuckets = (planList, extraRows = [], excludePlanId = null) => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const buckets = Array.from({ length: 8 }, (_, i) => ({
+      from: new Date(start.getTime() + i * 7 * 86400000),
+      to: new Date(start.getTime() + (i * 7 + 6) * 86400000),
+      total: 0,
+    }));
+    const add = (dueDate, amount) => {
+      const d = new Date(dueDate + 'T00:00:00');
+      const diff = Math.floor((d - start) / 86400000);
+      if (diff >= 0 && diff < 56) buckets[Math.floor(diff / 7)].total += amount;
+    };
+    planList.forEach(sp => {
+      if (sp.id === excludePlanId) return;
+      (sp.installments || []).forEach(inst => { if (!inst.paid) add(inst.due_date, inst.amount); });
+    });
+    extraRows.forEach(r => {
+      if (r.due_date && r.amount && !r.paid) add(r.due_date, parseFloat(r.amount) || 0);
+    });
+    return buckets;
+  };
+
+  const fmtRange = (b) => {
+    const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${M[b.from.getMonth()]} ${b.from.getDate()} – ${M[b.to.getMonth()]} ${b.to.getDate()}`;
   };
 
   const load = () => {
@@ -203,6 +250,58 @@ export default function SplitPayments() {
           </button>
         </div>
       </div>
+
+      {plans.length > 0 && (() => {
+        const buckets = weeklyBuckets(plans);
+        const maxVal = Math.max(...buckets.map(b => b.total), weeklyLimit, 1);
+        const anyDue = buckets.some(b => b.total > 0);
+        return (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="flex-between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
+              <div className="section-title">Installment Load — Next 8 Weeks</div>
+              <div className="flex-gap" style={{ alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Weekly limit:</span>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  style={{ width: 100 }}
+                  placeholder="None"
+                  value={limitInput}
+                  onChange={e => setLimitInput(e.target.value)}
+                />
+                <button className="btn btn-ghost btn-sm" onClick={saveLimit}>Save</button>
+              </div>
+            </div>
+            {!anyDue ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>No unpaid installments in the next 8 weeks.</div>
+            ) : (
+              buckets.map((b, i) => {
+                const over = weeklyLimit > 0 && b.total > weeklyLimit;
+                return (
+                  <div key={i} className="flex-gap" style={{ alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 110, flexShrink: 0 }}>{fmtRange(b)}</span>
+                    <div className="progress-bar" style={{ flex: 1 }}>
+                      <div
+                        className={`progress-fill${over ? ' over' : ''}`}
+                        style={{ width: Math.round((b.total / maxVal) * 100) + '%' }}
+                      />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, width: 80, textAlign: 'right', color: over ? 'var(--danger)' : 'var(--text)' }}>
+                      {b.total > 0 ? fmt(b.total) : '—'}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+            {weeklyLimit > 0 && buckets.some(b => b.total > weeklyLimit) && (
+              <div style={{ marginTop: 10, fontSize: 13, color: 'var(--danger)' }}>
+                {buckets.filter(b => b.total > weeklyLimit).length} week(s) exceed your {fmt(weeklyLimit)} limit.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {plans.length === 0 ? (
         <div className="card">
@@ -395,6 +494,17 @@ export default function SplitPayments() {
                 ))}
               </div>
 
+              {weeklyLimit > 0 && (() => {
+                const projected = weeklyBuckets(plans, installments, editingId);
+                const breached = projected.filter(b => b.total > weeklyLimit);
+                if (breached.length === 0) return null;
+                return (
+                  <div className="error-msg" style={{ background: 'var(--warning-light)', color: 'var(--warning)', borderColor: 'rgba(245,158,11,0.3)' }}>
+                    Heads up: with this plan, {breached.length} week(s) would exceed your {fmt(weeklyLimit)}/week installment limit
+                    ({breached.map(b => `${fmtRange(b)}: ${fmt(b.total)}`).join(', ')}).
+                  </div>
+                );
+              })()}
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Plan'}</button>

@@ -963,6 +963,9 @@ tr:hover td {
   transition: width 0.3s;
 }
 
+.progress-fill.warn { background: var(--warning); }
+.progress-fill.over { background: var(--danger); }
+
 .loan-card {
   background: var(--card);
   border-radius: var(--radius);

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const auth = require('../middleware/auth');
-const { sendReminderForUser } = require('../reminders');
+const { sendReminderForUser, sendWeeklyDigestForUser } = require('../reminders');
 
 router.use(auth);
 
@@ -20,6 +20,18 @@ router.post('/test-reminder', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found — try logging out and back in' });
     await sendReminderForUser(db, user, true);
     res.json({ success: true, message: 'Test reminder sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/test-digest', async (req, res) => {
+  try {
+    const userId = req.user.originalId || req.user.id;
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) return res.status(404).json({ error: 'User not found — try logging out and back in' });
+    await sendWeeklyDigestForUser(db, user, true);
+    res.json({ success: true, message: 'Test digest sent' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

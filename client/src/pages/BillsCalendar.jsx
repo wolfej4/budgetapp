@@ -104,9 +104,9 @@ export default function BillsCalendar() {
       }
     });
     loans.forEach(loan => {
-      if (loan.current_balance <= 0 || !loan.start_date) return;
-      const d = parseLocal(loan.start_date);
-      if (d && d.day === day) {
+      if (loan.current_balance <= 0) return;
+      const dueDay = loan.due_day || parseLocal(loan.start_date)?.day;
+      if (dueDay === day) {
         result.push({ type: 'loan', name: loan.name, amount: loan.monthly_payment, data: loan });
       }
     });
@@ -236,7 +236,7 @@ export default function BillsCalendar() {
       ['Current balance', fmt(l.current_balance)],
       ['Original amount', fmt(l.original_amount)],
       ['Interest rate', `${l.interest_rate}%`],
-      ['Payment day', `Day ${parseLocal(l.start_date)?.day ?? '—'} of each month`],
+      ['Payment day', `Day ${l.due_day || parseLocal(l.start_date)?.day || '—'} of each month`],
       ['Rough months left', monthsLeft ? `~${monthsLeft} (before interest)` : '—'],
     ];
   };

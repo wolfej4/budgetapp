@@ -30,6 +30,14 @@ export default function Transactions() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [filterCat, setFilterCat] = useState('');
+  const [budgets, setBudgets] = useState([]);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [budgetEdits, setBudgetEdits] = useState({});
+  const [allTxs, setAllTxs] = useState([]);
+  const [subNames, setSubNames] = useState([]);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dismissedSuggestions') || '[]'); } catch { return []; }
+  });
 
   const load = () => {
     setLoading(true);
@@ -39,7 +47,78 @@ export default function Transactions() {
     });
   };
 
+  const loadExtras = () => {
+    get('/category-budgets').then(data => setBudgets(Array.isArray(data) ? data : []));
+    get('/transactions').then(data => setAllTxs(Array.isArray(data) ? data : []));
+    get('/subscriptions').then(data => setSubNames((Array.isArray(data) ? data : []).map(s => s.name.toLowerCase())));
+  };
+
   useEffect(() => { load(); }, [viewYear, viewMonth]);
+  useEffect(() => { loadExtras(); }, []);
+
+  // Spending per category for the viewed month
+  const spentByCategory = {};
+  txs.filter(t => t.amount < 0).forEach(t => {
+    const cat = t.category || 'Other';
+    spentByCategory[cat] = (spentByCategory[cat] || 0) - t.amount;
+  });
+
+  // Detect recurring expenses: same payee + amount in 2+ distinct months,
+  // not already a subscription and not dismissed
+  const suggestions = (() => {
+    const groups = {};
+    allTxs.filter(t => t.amount < 0).forEach(t => {
+      const key = `${t.payee.toLowerCase()}|${Math.abs(t.amount)}`;
+      if (!groups[key]) groups[key] = { payee: t.payee, amount: Math.abs(t.amount), months: new Set(), latest: t.date };
+      groups[key].months.add(t.date.slice(0, 7));
+      if (t.date > groups[key].latest) groups[key].latest = t.date;
+    });
+    return Object.entries(groups)
+      .filter(([key, g]) =>
+        g.months.size >= 2 &&
+        !dismissed.includes(key) &&
+        !subNames.includes(g.payee.toLowerCase())
+      )
+      .map(([key, g]) => ({ key, ...g }));
+  })();
+
+  const dismissSuggestion = (key) => {
+    const next = [...dismissed, key];
+    setDismissed(next);
+    localStorage.setItem('dismissedSuggestions', JSON.stringify(next));
+  };
+
+  const makeSubscription = async (sug) => {
+    await post('/subscriptions', {
+      name: sug.payee,
+      amount: sug.amount,
+      billing_cycle: 'monthly',
+      due_day: Number(sug.latest.slice(8, 10)),
+      category: 'Other'
+    });
+    dismissSuggestion(sug.key);
+    loadExtras();
+  };
+
+  const openBudgetModal = () => {
+    const edits = {};
+    for (const b of budgets) edits[b.category] = String(b.monthly_limit);
+    setBudgetEdits(edits);
+    setShowBudgetModal(true);
+  };
+
+  const saveBudgets = async () => {
+    for (const cat of CATEGORIES.filter(c => c !== 'Income')) {
+      const newVal = parseFloat(budgetEdits[cat]) || 0;
+      const existing = budgets.find(b => b.category === cat);
+      const oldVal = existing ? existing.monthly_limit : 0;
+      if (newVal !== oldVal) {
+        await put('/category-budgets', { category: cat, monthly_limit: newVal });
+      }
+    }
+    setShowBudgetModal(false);
+    loadExtras();
+  };
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
@@ -98,6 +177,7 @@ export default function Transactions() {
       if (data.error) { setError(data.error); return; }
       setShowModal(false);
       load();
+      loadExtras();
     } catch {
       setError('Failed to save transaction.');
     } finally {
@@ -137,6 +217,55 @@ export default function Transactions() {
           <div className="card-sub">Inflow minus outflow</div>
         </div>
       </div>
+
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="flex-between" style={{ marginBottom: budgets.length ? 16 : 0 }}>
+          <div className="section-title">Category Budgets — {MONTHS[viewMonth]}</div>
+          <button className="btn btn-ghost btn-sm" onClick={openBudgetModal}>Manage</button>
+        </div>
+        {budgets.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+            No category limits set. Click Manage to set monthly spending caps.
+          </div>
+        ) : (
+          budgets.map(b => {
+            const spent = spentByCategory[b.category] || 0;
+            const pct = Math.min(Math.round((spent / b.monthly_limit) * 100), 100);
+            const ratio = spent / b.monthly_limit;
+            const cls = ratio > 1 ? ' over' : ratio >= 0.8 ? ' warn' : '';
+            return (
+              <div key={b.category} style={{ marginBottom: 12 }}>
+                <div className="flex-between" style={{ fontSize: 13, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600 }}>{b.category}</span>
+                  <span style={{ color: ratio > 1 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                    {fmt(spent)} of {fmt(b.monthly_limit)}{ratio > 1 ? ` — ${fmt(spent - b.monthly_limit)} over` : ''}
+                  </span>
+                </div>
+                <div className="progress-bar">
+                  <div className={`progress-fill${cls}`} style={{ width: pct + '%' }} />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="card" style={{ marginBottom: 24, borderColor: 'var(--warning)' }}>
+          <div className="section-title" style={{ marginBottom: 12 }}>Looks Recurring</div>
+          {suggestions.map(sug => (
+            <div key={sug.key} className="flex-between" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+              <span style={{ fontSize: 14 }}>
+                <strong>{sug.payee}</strong> — {fmt(sug.amount)} seen in {sug.months.size} different months
+              </span>
+              <span className="flex-gap">
+                <button className="btn btn-primary btn-sm" onClick={() => makeSubscription(sug)}>Make Subscription</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => dismissSuggestion(sug.key)}>Dismiss</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <div className="flex-between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
@@ -238,6 +367,36 @@ export default function Transactions() {
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : (editTx ? 'Update' : 'Add Transaction')}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showBudgetModal && (
+        <div className="modal-overlay" onClick={() => setShowBudgetModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Category Budgets</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+              Set a monthly spending cap per category. Leave blank or 0 for no limit.
+            </p>
+            {CATEGORIES.filter(c => c !== 'Income').map(cat => (
+              <div key={cat} className="flex-between" style={{ marginBottom: 10, gap: 12 }}>
+                <label className="form-label" style={{ marginBottom: 0, flex: 1 }}>{cat}</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  step="1"
+                  min="0"
+                  style={{ width: 120 }}
+                  placeholder="No limit"
+                  value={budgetEdits[cat] || ''}
+                  onChange={e => setBudgetEdits({ ...budgetEdits, [cat]: e.target.value })}
+                />
+              </div>
+            ))}
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowBudgetModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={saveBudgets}>Save Budgets</button>
+            </div>
           </div>
         </div>
       )}

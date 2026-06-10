@@ -36,22 +36,22 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category, budget_id } = req.body;
+  const { name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category, budget_id, due_day } = req.body;
   if (!name || original_amount == null || current_balance == null || interest_rate == null || monthly_payment == null || !start_date) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   const result = db.prepare(
-    'INSERT INTO loans (user_id, budget_id, name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(req.user.id, budget_id || null, name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category || 'auto');
+    'INSERT INTO loans (user_id, budget_id, name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category, due_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.user.id, budget_id || null, name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category || 'auto', due_day || null);
   res.json(db.prepare('SELECT * FROM loans WHERE id = ?').get(result.lastInsertRowid));
 });
 
 router.put('/:id', (req, res) => {
   const loan = db.prepare('SELECT * FROM loans WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!loan) return res.status(404).json({ error: 'Loan not found' });
-  const { name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category, budget_id } = req.body;
+  const { name, original_amount, current_balance, interest_rate, monthly_payment, start_date, category, budget_id, due_day } = req.body;
   db.prepare(
-    'UPDATE loans SET name=?, original_amount=?, current_balance=?, interest_rate=?, monthly_payment=?, start_date=?, category=?, budget_id=? WHERE id=?'
+    'UPDATE loans SET name=?, original_amount=?, current_balance=?, interest_rate=?, monthly_payment=?, start_date=?, category=?, budget_id=?, due_day=? WHERE id=?'
   ).run(
     name ?? loan.name,
     original_amount ?? loan.original_amount,
@@ -61,6 +61,7 @@ router.put('/:id', (req, res) => {
     start_date ?? loan.start_date,
     category ?? loan.category,
     budget_id ?? loan.budget_id,
+    due_day !== undefined ? due_day : loan.due_day,
     loan.id
   );
   res.json(db.prepare('SELECT * FROM loans WHERE id = ?').get(loan.id));
