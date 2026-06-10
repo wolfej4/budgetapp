@@ -157,6 +157,11 @@ if (!userCols.find(c => c.name === 'disabled')) {
   db.prepare('ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0').run();
 }
 
+// Safely add oidc_sub column to users (subject claim from the identity provider)
+if (!userCols.find(c => c.name === 'oidc_sub')) {
+  db.prepare('ALTER TABLE users ADD COLUMN oidc_sub TEXT').run();
+}
+
 // Safely add due_day column to loans (payment due day, separate from start_date)
 const loanCols = db.prepare('PRAGMA table_info(loans)').all();
 if (!loanCols.find(c => c.name === 'due_day')) {

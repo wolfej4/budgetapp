@@ -353,6 +353,23 @@ body {
   margin-bottom: 28px;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .auth-link {
   display: block;
   text-align: center;

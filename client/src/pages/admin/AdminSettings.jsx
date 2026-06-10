@@ -9,12 +9,21 @@ const SMTP_FIELDS = [
   { key: 'smtp_from', label: 'From Address', type: 'text', placeholder: 'noreply@example.com' },
 ];
 
+const OIDC_FIELDS = [
+  { key: 'oidc_issuer', label: 'Issuer URL', type: 'text', placeholder: 'https://accounts.google.com' },
+  { key: 'oidc_client_id', label: 'Client ID', type: 'text', placeholder: 'your-client-id' },
+  { key: 'oidc_client_secret', label: 'Client Secret', type: 'password', placeholder: '••••••••' },
+  { key: 'oidc_redirect_uri', label: 'Redirect URI (optional)', type: 'text', placeholder: 'https://yourapp.com/api/auth/oidc/callback' },
+  { key: 'oidc_provider_name', label: 'Button Label', type: 'text', placeholder: 'e.g. Google' },
+];
+
 export default function AdminSettings() {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [smtpValues, setSmtpValues] = useState({});
+  const [oidcValues, setOidcValues] = useState({});
   const [testMsg, setTestMsg] = useState('');
 
   const load = () => {
@@ -24,6 +33,9 @@ export default function AdminSettings() {
       const smtp = {};
       for (const f of SMTP_FIELDS) smtp[f.key] = data[f.key] || '';
       setSmtpValues(smtp);
+      const oidc = {};
+      for (const f of OIDC_FIELDS) oidc[f.key] = data[f.key] || '';
+      setOidcValues(oidc);
       setLoading(false);
     });
   };
@@ -46,6 +58,17 @@ export default function AdminSettings() {
     }
     setSaving(false);
     setMsg('SMTP settings saved.');
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  const handleOidcSave = async () => {
+    setSaving(true);
+    setMsg('');
+    for (const f of OIDC_FIELDS) {
+      await put('/admin/settings', { key: f.key, value: oidcValues[f.key] || '' });
+    }
+    setSaving(false);
+    setMsg('OIDC settings saved.');
     setTimeout(() => setMsg(''), 3000);
   };
 
@@ -121,6 +144,31 @@ export default function AdminSettings() {
           <button className="btn btn-ghost" onClick={handleTestEmail}>Send Test Email</button>
           {testMsg && <span style={{ fontSize: 13, color: testMsg.includes('success') ? 'var(--success)' : 'var(--danger)' }}>{testMsg}</span>}
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 24 }}>
+        <h3 style={{ marginBottom: 8 }}>Single Sign-On (OIDC)</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+          Let users sign in with an OpenID Connect provider (Google, Keycloak, Authentik, Auth0...).
+          Register this redirect URI with your provider: <code>{window.location.origin}/api/auth/oidc/callback</code>.
+          Environment variables (OIDC_ISSUER, OIDC_CLIENT_ID, ...) take precedence over these settings.
+          A "Continue with ..." button appears on the login page once issuer, client ID, and secret are set.
+        </p>
+        {OIDC_FIELDS.map(f => (
+          <div className="form-group" key={f.key}>
+            <label className="form-label">{f.label}</label>
+            <input
+              className="form-input"
+              type={f.type}
+              placeholder={f.placeholder}
+              value={oidcValues[f.key] || ''}
+              onChange={e => setOidcValues(v => ({ ...v, [f.key]: e.target.value }))}
+            />
+          </div>
+        ))}
+        <button className="btn btn-primary" onClick={handleOidcSave} disabled={saving} style={{ marginTop: 8 }}>
+          {saving ? 'Saving...' : 'Save OIDC Settings'}
+        </button>
       </div>
     </div>
   );

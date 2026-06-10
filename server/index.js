@@ -9,6 +9,7 @@ const { scheduleReminders } = require('./reminders');
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth/oidc', require('./routes/oidc'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/bills', require('./routes/bills'));
 app.use('/api/split-payments', require('./routes/splitPayments'));
