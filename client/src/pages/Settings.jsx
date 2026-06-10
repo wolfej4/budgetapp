@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { get, post, put } from '../api.js';
+import { OPTIONAL_PAGES, readHiddenPages, writeHiddenPages } from '../optionalPages.js';
 
 export default function Settings() {
   const [smtpStatus, setSmtpStatus] = useState(null);
@@ -8,11 +9,26 @@ export default function Settings() {
   const [digestEnabled, setDigestEnabled] = useState(true);
   const [sendingDigest, setSendingDigest] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
+  const [hiddenPages, setHiddenPages] = useState(readHiddenPages);
 
   useEffect(() => {
     get('/settings/smtp-status').then(data => setSmtpStatus(data));
-    get('/user-settings').then(s => setDigestEnabled(s.weekly_digest !== '0'));
+    get('/user-settings').then(s => {
+      setDigestEnabled(s.weekly_digest !== '0');
+      if (s.hidden_pages) {
+        try { setHiddenPages(JSON.parse(s.hidden_pages)); } catch { /* ignore */ }
+      }
+    });
   }, []);
+
+  async function togglePage(path) {
+    const next = hiddenPages.includes(path)
+      ? hiddenPages.filter(p => p !== path)
+      : [...hiddenPages, path];
+    setHiddenPages(next);
+    writeHiddenPages(next);
+    await put('/user-settings', { key: 'hidden_pages', value: JSON.stringify(next) });
+  }
 
   async function sendTestReminder() {
     setSending(true);
@@ -49,6 +65,29 @@ export default function Settings() {
     <div className="page-container">
       <div className="page-header">
         <div className="page-title">Settings</div>
+      </div>
+
+      <div className="section">
+        <div className="section-title" style={{ marginBottom: 16 }}>Visible Pages</div>
+        <div className="card">
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>
+            Choose which pages appear in your navigation. Dashboard and Settings are always shown.
+            Hidden pages stay reachable by URL — this only declutters the menu.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+            {OPTIONAL_PAGES.map(p => (
+              <label key={p.path} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={!hiddenPages.includes(p.path)}
+                  onChange={() => togglePage(p.path)}
+                  style={{ accentColor: 'var(--accent)', width: 16, height: 16 }}
+                />
+                {p.label}
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="section">

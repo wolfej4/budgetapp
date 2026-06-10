@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import useTheme from '../hooks/useTheme.js';
+import { get } from '../api.js';
+import { readHiddenPages } from '../optionalPages.js';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [theme, toggleTheme] = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hiddenPages, setHiddenPages] = useState(readHiddenPages);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = currentUser.role === 'admin';
+
+  useEffect(() => {
+    // Authoritative copy lives in user settings so it follows the account
+    get('/user-settings').then(s => {
+      if (s && s.hidden_pages) {
+        try {
+          const hidden = JSON.parse(s.hidden_pages);
+          setHiddenPages(hidden);
+          localStorage.setItem('hiddenPages', JSON.stringify(hidden));
+        } catch { /* ignore bad data */ }
+      }
+    }).catch(() => {});
+
+    const onChange = (e) => setHiddenPages(e.detail);
+    window.addEventListener('hidden-pages-changed', onChange);
+    return () => window.removeEventListener('hidden-pages-changed', onChange);
+  }, []);
+
+  const show = (path) => !hiddenPages.includes(path);
   const impersonatingData = localStorage.getItem('impersonating')
     ? JSON.parse(localStorage.getItem('impersonating'))
     : null;
@@ -56,14 +78,14 @@ export default function Navbar() {
         {/* Desktop links */}
         <div className="navbar-links">
           {navLink('/dashboard', 'Dashboard')}
-          {navLink('/bills', 'Bills')}
-          {navLink('/split-payments', 'Split Payments')}
-          {navLink('/loans', 'Loans')}
-          {navLink('/budgets', 'Budgets')}
-          {navLink('/transactions', 'Transactions')}
-          {navLink('/savings-goals', 'Savings')}
-          {navLink('/subscriptions', 'Subscriptions')}
-          {navLink('/reports', 'Reports')}
+          {show('/bills') && navLink('/bills', 'Bills')}
+          {show('/split-payments') && navLink('/split-payments', 'Split Payments')}
+          {show('/loans') && navLink('/loans', 'Loans')}
+          {show('/budgets') && navLink('/budgets', 'Budgets')}
+          {show('/transactions') && navLink('/transactions', 'Transactions')}
+          {show('/savings-goals') && navLink('/savings-goals', 'Savings')}
+          {show('/subscriptions') && navLink('/subscriptions', 'Subscriptions')}
+          {show('/reports') && navLink('/reports', 'Reports')}
           {navLink('/settings', 'Settings')}
           {isAdmin && navLink('/admin', 'Admin')}
         </div>
@@ -102,14 +124,14 @@ export default function Navbar() {
       {menuOpen && (
         <div className="mobile-menu">
           {navLink('/dashboard', 'Dashboard')}
-          {navLink('/bills', 'Bills')}
-          {navLink('/split-payments', 'Split Payments')}
-          {navLink('/loans', 'Loans')}
-          {navLink('/budgets', 'Budgets')}
-          {navLink('/transactions', 'Transactions')}
-          {navLink('/savings-goals', 'Savings')}
-          {navLink('/subscriptions', 'Subscriptions')}
-          {navLink('/reports', 'Reports')}
+          {show('/bills') && navLink('/bills', 'Bills')}
+          {show('/split-payments') && navLink('/split-payments', 'Split Payments')}
+          {show('/loans') && navLink('/loans', 'Loans')}
+          {show('/budgets') && navLink('/budgets', 'Budgets')}
+          {show('/transactions') && navLink('/transactions', 'Transactions')}
+          {show('/savings-goals') && navLink('/savings-goals', 'Savings')}
+          {show('/subscriptions') && navLink('/subscriptions', 'Subscriptions')}
+          {show('/reports') && navLink('/reports', 'Reports')}
           {navLink('/settings', 'Settings')}
           {isAdmin && navLink('/admin', 'Admin')}
           <button className="nav-link mobile-logout" onClick={() => { closeMenu(); logout(); }}>
