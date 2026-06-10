@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { get } from '../../api.js';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [version, setVersion] = useState(null);
+
+  useEffect(() => {
+    get('/version').then(d => setVersion(d.version)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -68,6 +74,11 @@ export default function AdminLayout() {
       <div style={{ padding: '24px' }}>
         <Outlet />
       </div>
+      {version && (
+        <div style={{ padding: '0 24px 24px', color: 'var(--text-dim)', fontSize: 12 }}>
+          BudgetBuddy v{version}
+        </div>
+      )}
     </div>
   );
 }
