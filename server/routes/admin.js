@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../db');
 const adminAuth = require('../middleware/adminAuth');
 
@@ -144,6 +145,40 @@ router.put('/settings', (req, res) => {
   const { key, value } = req.body;
   if (!key || value === undefined) return res.status(400).json({ error: 'key and value required' });
   db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run(key, String(value));
+  res.json({ success: true });
+});
+
+// GET /api/admin/invites
+router.get('/invites', (req, res) => {
+  const invites = db.prepare(`
+    SELECT i.id, i.token, i.created_at, i.used_at, i.expires_at,
+           c.name as created_by_name,
+           u.name as used_by_name
+    FROM invites i
+    JOIN users c ON c.id = i.created_by
+    LEFT JOIN users u ON u.id = i.used_by
+    ORDER BY i.created_at DESC
+  `).all();
+  res.json(invites);
+});
+
+// POST /api/admin/invites
+router.post('/invites', (req, res) => {
+  const { expiresInDays } = req.body;
+  const token = crypto.randomBytes(24).toString('hex');
+  let expires_at = null;
+  if (expiresInDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + Number(expiresInDays));
+    expires_at = d.toISOString();
+  }
+  db.prepare('INSERT INTO invites (token, created_by, expires_at) VALUES (?, ?, ?)').run(token, req.user.id, expires_at);
+  res.json({ token });
+});
+
+// DELETE /api/admin/invites/:id
+router.delete('/invites/:id', (req, res) => {
+  db.prepare('DELETE FROM invites WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 

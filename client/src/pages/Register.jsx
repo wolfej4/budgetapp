@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { post } from '../api.js';
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite') || '';
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,9 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      const data = await post('/auth/register', form);
+      const payload = { ...form };
+      if (inviteToken) payload.invite_token = inviteToken;
+      const data = await post('/auth/register', payload);
       if (data.error) {
         setError(data.error);
       } else {
@@ -34,7 +38,14 @@ export default function Register() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-title">Create account</div>
-        <div className="auth-subtitle">Start tracking your budget today</div>
+        <div className="auth-subtitle">
+          {inviteToken ? "You've been invited to BudgetBuddy!" : 'Start tracking your budget today'}
+        </div>
+        {inviteToken && (
+          <div style={{ background: 'var(--success-light)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 14, marginBottom: 16 }}>
+            Invite link active — fill in your details to get started.
+          </div>
+        )}
         {error && <div className="error-msg">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
