@@ -189,11 +189,14 @@ export default function SplitPayments() {
     const last = Math.round((total - base * (count - 1)) * 100) / 100;
 
     const rows = [];
+    const today = todayStr();
     const d = new Date(autoSplit.firstDate + 'T00:00:00');
     for (let i = 0; i < count; i++) {
+      const due = dateToStr(d);
       rows.push({
         amount: String(i === count - 1 ? last : base),
-        due_date: dateToStr(d),
+        due_date: due,
+        paid: i === 0 && due <= today ? 1 : 0,
       });
       if (autoSplit.frequency === 'weekly') d.setDate(d.getDate() + 7);
       else if (autoSplit.frequency === 'biweekly') d.setDate(d.getDate() + 14);
