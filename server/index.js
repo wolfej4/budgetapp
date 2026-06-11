@@ -5,7 +5,7 @@ const fs = require('fs');
 const app = express();
 const db = require('./db');
 const { scheduleReminders } = require('./reminders');
-const { version } = require('../package.json');
+const { version } = require('./package.json');
 
 app.use(cors());
 app.use(express.json());
