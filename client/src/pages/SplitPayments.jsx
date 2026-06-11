@@ -43,6 +43,12 @@ export default function SplitPayments() {
   const [weeklyLimit, setWeeklyLimit] = useState(0);
   const [limitInput, setLimitInput] = useState('');
 
+  // Pay confirmation modal
+  const [payModal, setPayModal] = useState(null); // { planId, instId, amount, payee, date }
+  const [payDate, setPayDate] = useState(todayStr());
+  const [payNotes, setPayNotes] = useState('');
+  const [paying, setPaying] = useState(false);
+
   const switchView = (v) => {
     setView(v);
     localStorage.setItem('splitPaymentsView', v);
@@ -102,8 +108,30 @@ export default function SplitPayments() {
 
   useEffect(() => { load(); }, []);
 
-  const handleMarkPaid = async (planId, instId, paid) => {
-    await put(`/split-payments/${planId}/installments/${instId}`, { paid });
+  const openPayModal = (planId, instId, amount, payee) => {
+    setPayModal({ planId, instId, amount, payee });
+    setPayDate(todayStr());
+    setPayNotes('');
+  };
+
+  const handleConfirmPay = async () => {
+    if (!payModal) return;
+    setPaying(true);
+    await put(`/split-payments/${payModal.planId}/installments/${payModal.instId}`, { paid: true });
+    await post('/transactions', {
+      date: payDate,
+      payee: payModal.payee,
+      category: 'Debt Payment',
+      amount: -Math.abs(payModal.amount),
+      notes: payNotes || null,
+    });
+    setPayModal(null);
+    setPaying(false);
+    load();
+  };
+
+  const handleMarkUnpaid = async (planId, instId) => {
+    await put(`/split-payments/${planId}/installments/${instId}`, { paid: false });
     load();
   };
 
@@ -343,7 +371,7 @@ export default function SplitPayments() {
                     </div>
                     <div className="flex-gap" style={{ marginTop: 'auto' }}>
                       {nextUnpaid && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => handleMarkPaid(plan.id, nextUnpaid.id, true)}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openPayModal(plan.id, nextUnpaid.id, nextUnpaid.amount, plan.description || plan.marketplace || plan.provider)}>
                           Pay next
                         </button>
                       )}
@@ -381,7 +409,10 @@ export default function SplitPayments() {
                           <input
                             type="checkbox"
                             checked={!!inst.paid}
-                            onChange={() => handleMarkPaid(plan.id, inst.id, !inst.paid)}
+                            onChange={() => inst.paid
+                              ? handleMarkUnpaid(plan.id, inst.id)
+                              : openPayModal(plan.id, inst.id, inst.amount, plan.description || plan.marketplace || plan.provider)
+                            }
                             style={{ accentColor: 'var(--accent)', width: 15, height: 15 }}
                           />
                           {inst.paid ? 'Paid' : 'Mark paid'}
@@ -510,6 +541,41 @@ export default function SplitPayments() {
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Plan'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {payModal && (
+        <div className="modal-overlay" onClick={() => setPayModal(null)}>
+          <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Record Payment</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
+              Mark <strong>{payModal.payee}</strong> installment of <strong>{fmt(payModal.amount)}</strong> as paid and log it as a transaction.
+            </p>
+            <div className="form-group">
+              <label className="form-label">Payment date</label>
+              <input
+                className="form-input"
+                type="date"
+                value={payDate}
+                onChange={e => setPayDate(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notes (optional)</label>
+              <input
+                className="form-input"
+                value={payNotes}
+                onChange={e => setPayNotes(e.target.value)}
+                placeholder="e.g. Paid via Apple Pay"
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setPayModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleConfirmPay} disabled={paying || !payDate}>
+                {paying ? 'Saving...' : 'Confirm Payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}
