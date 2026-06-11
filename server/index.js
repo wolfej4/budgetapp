@@ -24,6 +24,7 @@ app.use('/api/export', require('./routes/exportData'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/recurring-transactions', require('./routes/recurringTransactions'));
 app.use('/api/category-budgets', require('./routes/categoryBudgets'));
 app.use('/api/user-settings', require('./routes/userSettings'));
 app.use('/api/admin', require('./routes/admin'));
