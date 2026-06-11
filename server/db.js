@@ -189,6 +189,33 @@ if (!splitCols.find(c => c.name === 'marketplace')) {
 // Income feature removed in favor of the transactions ledger
 db.exec('DROP TABLE IF EXISTS income');
 
+// Recurring transaction templates
+db.exec(`
+CREATE TABLE IF NOT EXISTS recurring_transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  payee TEXT NOT NULL,
+  category TEXT DEFAULT 'Other',
+  amount REAL NOT NULL,
+  notes TEXT,
+  frequency TEXT NOT NULL DEFAULT 'monthly',
+  day_of_month INTEGER,
+  day_of_week INTEGER,
+  start_date TEXT NOT NULL,
+  end_date TEXT,
+  last_generated TEXT,
+  active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+`);
+
+// Add recurring_id column to transactions so generated entries are linked
+const txCols = db.prepare('PRAGMA table_info(transactions)').all();
+if (!txCols.find(c => c.name === 'recurring_id')) {
+  db.prepare('ALTER TABLE transactions ADD COLUMN recurring_id INTEGER REFERENCES recurring_transactions(id)').run();
+}
+
 // Seed default settings
 db.prepare("INSERT OR IGNORE INTO app_settings VALUES ('registration_open', '1')").run();
 
