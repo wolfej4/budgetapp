@@ -48,6 +48,7 @@ export default function BillsCalendar() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [drawerItem, setDrawerItem] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -114,11 +115,13 @@ export default function BillsCalendar() {
   }
 
   const prevMonth = () => {
+    setSelectedDay(null);
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
     else setViewMonth(viewMonth - 1);
   };
 
   const nextMonth = () => {
+    setSelectedDay(null);
     if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
     else setViewMonth(viewMonth + 1);
   };
@@ -269,24 +272,81 @@ export default function BillsCalendar() {
           {cells.map((day, i) => {
             if (day === null) return <div className="calendar-cell empty" key={i} />;
             const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+            const isSelected = day === selectedDay;
             const items = getItemsForDay(day);
             return (
-              <div className={`calendar-cell${isToday ? ' today' : ''}`} key={i}>
-                <div className="cell-day-num">{day}</div>
-                {items.map((item, j) => (
-                  <button
-                    key={j}
-                    className={`calendar-chip chip-${item.type}`}
-                    title={`${item.name} — ${fmt(item.amount)}`}
-                    onClick={() => setDrawerItem(item)}
+              <div
+                className={`calendar-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`}
+                key={i}
+              >
+                {/* Mobile: tap day to see items below */}
+                <div
+                  className="cell-day-num"
+                  onClick={() => setSelectedDay(isSelected ? null : day)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {day}
+                </div>
+
+                {/* Desktop chips */}
+                <div className="calendar-chips-desktop">
+                  {items.map((item, j) => (
+                    <button
+                      key={j}
+                      className={`calendar-chip chip-${item.type}`}
+                      title={`${item.name} — ${fmt(item.amount)}`}
+                      onClick={() => setDrawerItem(item)}
+                    >
+                      {item.name} — {fmt(item.amount)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile dots */}
+                {items.length > 0 && (
+                  <div
+                    className="calendar-dots-mobile"
+                    onClick={() => setSelectedDay(isSelected ? null : day)}
                   >
-                    {item.name} — {fmt(item.amount)}
-                  </button>
-                ))}
+                    {['bill', 'split', 'sub', 'loan'].map(type => {
+                      const count = items.filter(it => it.type === type).length;
+                      return count > 0 ? (
+                        <span key={type} className={`cal-dot chip-${type}`} title={`${count} ${type}`}>
+                          {count > 1 ? count : ''}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+        {/* Mobile day-detail panel */}
+        {selectedDay !== null && (() => {
+          const items = getItemsForDay(selectedDay);
+          return (
+            <div className="day-detail-panel">
+              <div className="day-detail-header">
+                <span>{MONTHS[viewMonth]} {selectedDay}</span>
+                <button className="btn btn-icon" style={{ fontSize: 14 }} onClick={() => setSelectedDay(null)}>✕</button>
+              </div>
+              {items.length === 0 ? (
+                <div style={{ padding: '12px 0', color: 'var(--text-muted)', fontSize: 14 }}>Nothing due this day.</div>
+              ) : items.map((item, j) => (
+                <button
+                  key={j}
+                  className={`day-detail-item chip-${item.type}`}
+                  onClick={() => { setDrawerItem(item); setSelectedDay(null); }}
+                >
+                  <span className="day-detail-type">{TYPE_LABELS[item.type]}</span>
+                  <span className="day-detail-name">{item.name}</span>
+                  <span className="day-detail-amount">{fmt(item.amount)}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="section">

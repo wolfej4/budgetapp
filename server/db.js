@@ -144,6 +144,18 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   notes TEXT,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS invites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT UNIQUE NOT NULL,
+  created_by INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  used_at DATETIME,
+  used_by INTEGER,
+  expires_at DATETIME,
+  FOREIGN KEY(created_by) REFERENCES users(id),
+  FOREIGN KEY(used_by) REFERENCES users(id)
+);
 `);
 
 // Safely add role column to users

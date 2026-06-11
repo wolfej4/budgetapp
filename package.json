@@ -1,5 +1,6 @@
 {
   "name": "budgetbuddy",
+  "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && node index.js",

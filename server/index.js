@@ -5,9 +5,12 @@ const fs = require('fs');
 const app = express();
 const db = require('./db');
 const { scheduleReminders } = require('./reminders');
+const { version } = require('../package.json');
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/api/version', (req, res) => res.json({ version }));
 
 app.use('/api/auth/oidc', require('./routes/oidc'));
 app.use('/api/auth', require('./routes/auth'));
