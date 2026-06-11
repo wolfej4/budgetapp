@@ -41,6 +41,7 @@ export default function BillsCalendar() {
   const [splits, setSplits] = useState([]);
   const [subs, setSubs] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [txs, setTxs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editBill, setEditBill] = useState(null);
@@ -55,33 +56,43 @@ export default function BillsCalendar() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const loadData = () => {
-    Promise.all([get('/bills'), get('/split-payments'), get('/subscriptions'), get('/loans')]).then(([b, s, su, l]) => {
+    Promise.all([
+      get('/bills'), get('/split-payments'), get('/subscriptions'), get('/loans'),
+      get(`/transactions?year=${viewYear}&month=${viewMonth}`),
+    ]).then(([b, s, su, l, t]) => {
       setBills(Array.isArray(b) ? b : []);
       setSplits(Array.isArray(s) ? s : []);
       setSubs(Array.isArray(su) ? su : []);
       setLoans(Array.isArray(l) ? l : []);
+      setTxs(Array.isArray(t) ? t : []);
       setLoading(false);
     });
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [viewYear, viewMonth]);
 
   const cells = buildCalendar(viewYear, viewMonth);
+
+  // Payee names that appear as expenses in transactions this month (lowercase for matching)
+  const paidPayees = new Set(
+    txs.filter(t => t.amount < 0).map(t => t.payee.toLowerCase())
+  );
+  const txPaid = (name) => paidPayees.has(name.toLowerCase());
 
   function getItemsForDay(day) {
     const result = [];
     bills.forEach(bill => {
       if (bill.recurrence === 'monthly' && bill.due_day === day) {
-        result.push({ type: 'bill', name: bill.name, amount: bill.amount, data: bill });
+        result.push({ type: 'bill', name: bill.name, amount: bill.amount, paid: txPaid(bill.name), data: bill });
       } else if (bill.recurrence === 'yearly' && bill.due_date) {
         const d = parseLocal(bill.due_date);
         if (d && d.day === day && d.month === viewMonth) {
-          result.push({ type: 'bill', name: bill.name, amount: bill.amount, data: bill });
+          result.push({ type: 'bill', name: bill.name, amount: bill.amount, paid: txPaid(bill.name), data: bill });
         }
       } else if (bill.recurrence === 'one-time' && bill.due_date) {
         const d = parseLocal(bill.due_date);
         if (d && d.day === day && d.month === viewMonth && d.year === viewYear) {
-          result.push({ type: 'bill', name: bill.name, amount: bill.amount, data: bill });
+          result.push({ type: 'bill', name: bill.name, amount: bill.amount, paid: txPaid(bill.name), data: bill });
         }
       }
     });
@@ -89,18 +100,18 @@ export default function BillsCalendar() {
       (sp.installments || []).forEach(inst => {
         const d = parseLocal(inst.due_date);
         if (d && d.day === day && d.month === viewMonth && d.year === viewYear) {
-          result.push({ type: 'split', name: sp.description, amount: inst.amount, data: sp, installment: inst });
+          result.push({ type: 'split', name: sp.description, amount: inst.amount, paid: !!inst.paid, data: sp, installment: inst });
         }
       });
     });
     subs.forEach(sub => {
       if (!sub.active) return;
       if (sub.billing_cycle === 'monthly' && sub.due_day === day) {
-        result.push({ type: 'sub', name: sub.name, amount: sub.amount, data: sub });
+        result.push({ type: 'sub', name: sub.name, amount: sub.amount, paid: txPaid(sub.name), data: sub });
       } else if (sub.billing_cycle === 'yearly' && sub.renewal_date) {
         const d = parseLocal(sub.renewal_date);
         if (d && d.day === day && d.month === viewMonth) {
-          result.push({ type: 'sub', name: sub.name, amount: sub.amount, data: sub });
+          result.push({ type: 'sub', name: sub.name, amount: sub.amount, paid: txPaid(sub.name), data: sub });
         }
       }
     });
@@ -108,7 +119,7 @@ export default function BillsCalendar() {
       if (loan.current_balance <= 0) return;
       const dueDay = loan.due_day || parseLocal(loan.start_date)?.day;
       if (dueDay === day) {
-        result.push({ type: 'loan', name: loan.name, amount: loan.monthly_payment, data: loan });
+        result.push({ type: 'loan', name: loan.name, amount: loan.monthly_payment, paid: txPaid(loan.name), data: loan });
       }
     });
     return result;
@@ -293,10 +304,11 @@ export default function BillsCalendar() {
                   {items.map((item, j) => (
                     <button
                       key={j}
-                      className={`calendar-chip chip-${item.type}`}
-                      title={`${item.name} — ${fmt(item.amount)}`}
+                      className={`calendar-chip chip-${item.type}${item.paid ? ' chip-paid' : ''}`}
+                      title={`${item.name} — ${fmt(item.amount)}${item.paid ? ' ✓ Paid' : ''}`}
                       onClick={() => setDrawerItem(item)}
                     >
+                      {item.paid && <span style={{ marginRight: 3 }}>✓</span>}
                       {item.name} — {fmt(item.amount)}
                     </button>
                   ))}
@@ -309,12 +321,14 @@ export default function BillsCalendar() {
                     onClick={() => setSelectedDay(isSelected ? null : day)}
                   >
                     {['bill', 'split', 'sub', 'loan'].map(type => {
-                      const count = items.filter(it => it.type === type).length;
-                      return count > 0 ? (
-                        <span key={type} className={`cal-dot chip-${type}`} title={`${count} ${type}`}>
-                          {count > 1 ? count : ''}
+                      const typeItems = items.filter(it => it.type === type);
+                      if (typeItems.length === 0) return null;
+                      const allPaid = typeItems.every(it => it.paid);
+                      return (
+                        <span key={type} className={`cal-dot chip-${type}${allPaid ? ' chip-paid' : ''}`} title={`${typeItems.length} ${type}`}>
+                          {allPaid ? '✓' : typeItems.length > 1 ? typeItems.length : ''}
                         </span>
-                      ) : null;
+                      );
                     })}
                   </div>
                 )}
@@ -336,12 +350,13 @@ export default function BillsCalendar() {
               ) : items.map((item, j) => (
                 <button
                   key={j}
-                  className={`day-detail-item chip-${item.type}`}
+                  className={`day-detail-item chip-${item.type}${item.paid ? ' chip-paid' : ''}`}
                   onClick={() => { setDrawerItem(item); setSelectedDay(null); }}
                 >
                   <span className="day-detail-type">{TYPE_LABELS[item.type]}</span>
                   <span className="day-detail-name">{item.name}</span>
                   <span className="day-detail-amount">{fmt(item.amount)}</span>
+                  {item.paid && <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.85 }}>✓</span>}
                 </button>
               ))}
             </div>
@@ -466,6 +481,9 @@ export default function BillsCalendar() {
             </span>
             <div className="drawer-title">{drawerItem.name}</div>
             <div className="drawer-amount">{fmt(drawerItem.amount)}</div>
+            {drawerItem.paid && (
+              <div style={{ color: '#22c55e', fontWeight: 700, fontSize: 15, marginBottom: 8 }}>✓ Paid</div>
+            )}
             <div className="drawer-rows">
               {drawerRows(drawerItem).map(([label, value]) => (
                 <div className="drawer-row" key={label}>

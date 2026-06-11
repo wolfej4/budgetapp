@@ -603,6 +603,7 @@ tr:hover td {
 .chip-split { background: #7c3aed; color: #ddd6fe; }
 .chip-sub { background: #be185d; color: #fbcfe8; }
 .chip-loan { background: #b45309; color: #fde68a; }
+.chip-paid { opacity: 0.55; text-decoration: line-through; }
 
 /* Calendar legend */
 .calendar-legend {
