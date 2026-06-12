@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 
 router.use(auth);
 
-function getMonthData(userId, year, month) {
+function getMonthData(userId, year, month, accountId) {
   const monthStr = `${year}-${String(month).padStart(2, '0')}`;
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
@@ -51,17 +51,28 @@ function getMonthData(userId, year, month) {
 
   // Income: positive transactions from the ledger for this month
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
+  const acctFilter = accountId ? ' AND account_id = ?' : '';
+  const acctArgs = accountId ? [accountId] : [];
   const inflows = db.prepare(
-    "SELECT * FROM transactions WHERE user_id = ? AND amount > 0 AND date LIKE ? || '%'"
-  ).all(userId, prefix);
+    `SELECT * FROM transactions WHERE user_id = ? AND amount > 0 AND date LIKE ? || '%'${acctFilter}`
+  ).all(userId, prefix, ...acctArgs);
+  const spending = db.prepare(
+    `SELECT * FROM transactions WHERE user_id = ? AND amount < 0 AND date LIKE ? || '%'${acctFilter}`
+  ).all(userId, prefix, ...acctArgs);
   const incomeTotal = inflows.reduce((s, t) => s + t.amount, 0);
   const incomeByCategory = {};
   for (const t of inflows) {
     const cat = t.category || 'Other';
     incomeByCategory[cat] = (incomeByCategory[cat] || 0) + t.amount;
   }
+  const spendingTotal = spending.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const spendingByCategory = {};
+  for (const t of spending) {
+    const cat = t.category || 'Other';
+    spendingByCategory[cat] = (spendingByCategory[cat] || 0) + Math.abs(t.amount);
+  }
 
-  const totalExpenses = billsTotal + splitTotal + loansTotal;
+  const totalExpenses = accountId ? spendingTotal : billsTotal + splitTotal + loansTotal;
   const net = incomeTotal - totalExpenses;
 
   return {
@@ -69,19 +80,22 @@ function getMonthData(userId, year, month) {
     splitPayments: { total: splitTotal, due: splitDue, paid: splitPaid },
     loans: { total: loansTotal, byName: loansByName },
     income: { total: incomeTotal, byCategory: incomeByCategory },
-    net
+    spending: { total: spendingTotal, byCategory: spendingByCategory },
+    net,
+    accountFiltered: !!accountId,
   };
 }
 
 router.get('/monthly', (req, res) => {
   const year = parseInt(req.query.year) || new Date().getFullYear();
   const month = parseInt(req.query.month) || new Date().getMonth() + 1;
+  const accountId = req.query.account_id ? Number(req.query.account_id) : null;
 
-  const current = getMonthData(req.user.id, year, month);
+  const current = getMonthData(req.user.id, year, month, accountId);
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
-  const previousMonth = getMonthData(req.user.id, prevYear, prevMonth);
+  const previousMonth = getMonthData(req.user.id, prevYear, prevMonth, accountId);
 
   res.json({ ...current, previousMonth });
 });

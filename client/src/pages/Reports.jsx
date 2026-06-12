@@ -13,16 +13,23 @@ export default function Reports() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState([]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    get('/accounts').then(d => setAccounts(Array.isArray(d) ? d : []));
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
-    get(`/reports/monthly?year=${year}&month=${month}`).then(d => {
+    const acctQ = accountId ? `&account_id=${accountId}` : '';
+    get(`/reports/monthly?year=${year}&month=${month}${acctQ}`).then(d => {
       setData(d);
       setLoading(false);
     });
-  }, [year, month]);
+  }, [year, month, accountId]);
 
   function prevMonth() {
     if (month === 1) { setMonth(12); setYear(y => y - 1); }
@@ -75,13 +82,24 @@ export default function Reports() {
       </div>
 
       {/* Month Picker */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={prevMonth}>← Prev</button>
         <span style={{ fontSize: 20, fontWeight: 700, minWidth: 180, textAlign: 'center' }}>
           {MONTHS[month - 1]} {year}
         </span>
         <button className="btn btn-ghost" onClick={nextMonth}>Next →</button>
+        {accounts.length > 0 && (
+          <select className="form-select" style={{ width: 180, marginLeft: 8 }} value={accountId} onChange={e => setAccountId(e.target.value)}>
+            <option value="">All accounts</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
       </div>
+      {data?.accountFiltered && (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+          Showing transactions for <strong>{accounts.find(a => String(a.id) === accountId)?.name}</strong>. Bills and loans are not account-specific and are shown for all accounts.
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="card-grid" style={{ marginBottom: 24 }}>

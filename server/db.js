@@ -216,6 +216,25 @@ if (!txCols.find(c => c.name === 'recurring_id')) {
   db.prepare('ALTER TABLE transactions ADD COLUMN recurring_id INTEGER REFERENCES recurring_transactions(id)').run();
 }
 
+// Bank accounts table
+db.exec(`
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'checking',
+  color TEXT DEFAULT '#6366f1',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+`);
+
+// Add account_id to transactions
+const txColsNow = db.prepare('PRAGMA table_info(transactions)').all();
+if (!txColsNow.find(c => c.name === 'account_id')) {
+  db.prepare('ALTER TABLE transactions ADD COLUMN account_id INTEGER REFERENCES accounts(id)').run();
+}
+
 // Seed default settings
 db.prepare("INSERT OR IGNORE INTO app_settings VALUES ('registration_open', '1')").run();
 

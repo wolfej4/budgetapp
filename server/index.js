@@ -14,6 +14,7 @@ app.get('/api/version', (req, res) => res.json({ version }));
 
 app.use('/api/auth/oidc', require('./routes/oidc'));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/accounts', require('./routes/accounts'));
 app.use('/api/bills', require('./routes/bills'));
 app.use('/api/split-payments', require('./routes/splitPayments'));
 app.use('/api/loans', require('./routes/loans'));

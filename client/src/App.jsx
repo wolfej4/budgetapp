@@ -13,6 +13,7 @@ import Transactions from './pages/Transactions.jsx';
 import SavingsGoals from './pages/SavingsGoals.jsx';
 import Subscriptions from './pages/Subscriptions.jsx';
 import Reports from './pages/Reports.jsx';
+import Accounts from './pages/Accounts.jsx';
 import Settings from './pages/Settings.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import AdminUsers from './pages/admin/AdminUsers.jsx';
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/" element={<PrivateRoute><Navbar /></PrivateRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="accounts" element={<Accounts />} />
           <Route path="bills" element={<BillsCalendar />} />
           <Route path="split-payments" element={<SplitPayments />} />
           <Route path="loans" element={<Loans />} />

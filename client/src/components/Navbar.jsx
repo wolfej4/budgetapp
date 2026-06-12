@@ -78,6 +78,7 @@ export default function Navbar() {
         {/* Desktop links */}
         <div className="navbar-links">
           {navLink('/dashboard', 'Dashboard')}
+          {show('/accounts') && navLink('/accounts', 'Accounts')}
           {show('/bills') && navLink('/bills', 'Bills')}
           {show('/split-payments') && navLink('/split-payments', 'Split Payments')}
           {show('/loans') && navLink('/loans', 'Loans')}
@@ -124,6 +125,7 @@ export default function Navbar() {
       {menuOpen && (
         <div className="mobile-menu">
           {navLink('/dashboard', 'Dashboard')}
+          {show('/accounts') && navLink('/accounts', 'Accounts')}
           {show('/bills') && navLink('/bills', 'Bills')}
           {show('/split-payments') && navLink('/split-payments', 'Split Payments')}
           {show('/loans') && navLink('/loans', 'Loans')}

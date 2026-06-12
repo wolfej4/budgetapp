@@ -47,7 +47,9 @@ export default function SplitPayments() {
   const [payModal, setPayModal] = useState(null); // { planId, instId, amount, payee, date }
   const [payDate, setPayDate] = useState(todayStr());
   const [payNotes, setPayNotes] = useState('');
+  const [payAccountId, setPayAccountId] = useState('');
   const [paying, setPaying] = useState(false);
+  const [accounts, setAccounts] = useState([]);
 
   const switchView = (v) => {
     setView(v);
@@ -106,12 +108,16 @@ export default function SplitPayments() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    get('/accounts').then(data => setAccounts(Array.isArray(data) ? data : []));
+  }, []);
 
   const openPayModal = (planId, instId, amount, payee) => {
     setPayModal({ planId, instId, amount, payee });
     setPayDate(todayStr());
     setPayNotes('');
+    setPayAccountId('');
   };
 
   const handleConfirmPay = async () => {
@@ -124,6 +130,7 @@ export default function SplitPayments() {
       category: 'Debt Payment',
       amount: -Math.abs(payModal.amount),
       notes: payNotes || null,
+      account_id: payAccountId ? Number(payAccountId) : null,
     });
     setPayModal(null);
     setPaying(false);
@@ -564,6 +571,15 @@ export default function SplitPayments() {
                 onChange={e => setPayDate(e.target.value)}
               />
             </div>
+            {accounts.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Account (optional)</label>
+                <select className="form-select" value={payAccountId} onChange={e => setPayAccountId(e.target.value)}>
+                  <option value="">— Unassigned —</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Notes (optional)</label>
               <input

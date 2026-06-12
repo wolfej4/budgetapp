@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { get } from '../api.js';
 
 function fmt(n) {
@@ -11,7 +12,9 @@ export default function Dashboard() {
   const [loans, setLoans] = useState([]);
   const [subs, setSubs] = useState([]);
   const [txs, setTxs] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -25,13 +28,15 @@ export default function Dashboard() {
       get('/split-payments'),
       get('/loans'),
       get('/subscriptions'),
-      get(`/transactions?year=${currentYear}&month=${currentMonth}`)
-    ]).then(([b, s, l, su, tx]) => {
+      get(`/transactions?year=${currentYear}&month=${currentMonth}`),
+      get('/accounts'),
+    ]).then(([b, s, l, su, tx, ac]) => {
       setBills(Array.isArray(b) ? b : []);
       setSplits(Array.isArray(s) ? s : []);
       setLoans(Array.isArray(l) ? l : []);
       setSubs(Array.isArray(su) ? su : []);
       setTxs(Array.isArray(tx) ? tx : []);
+      setAccounts(Array.isArray(ac) ? ac : []);
       setLoading(false);
     });
   }, []);
@@ -173,6 +178,37 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {accounts.length > 0 && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="flex-between" style={{ marginBottom: 16 }}>
+            <div className="section-title">Accounts</div>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/accounts')}>Manage</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            {accounts.map(a => (
+              <div
+                key={a.id}
+                style={{ borderLeft: `3px solid ${a.color}`, paddingLeft: 12, cursor: 'pointer' }}
+                onClick={() => navigate(`/transactions?account_id=${a.id}`)}
+              >
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 2 }}>{a.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: a.balance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  {fmt(a.balance)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {accounts.length > 1 && (
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Total</span>
+              <span style={{ fontWeight: 700, color: accounts.reduce((s, a) => s + a.balance, 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                {fmt(accounts.reduce((s, a) => s + a.balance, 0))}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="section">
         <div className="section-header">

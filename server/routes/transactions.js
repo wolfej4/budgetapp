@@ -5,45 +5,50 @@ const auth = require('../middleware/auth');
 
 router.use(auth);
 
-// GET /api/transactions?year=2026&month=5  (month is 0-indexed to match the client)
+// GET /api/transactions?year=2026&month=5&account_id=3  (month is 0-indexed to match the client)
 router.get('/', (req, res) => {
-  const { year, month } = req.query;
+  const { year, month, account_id } = req.query;
+  const acctFilter = account_id ? ' AND account_id = ?' : '';
+  const acctArgs = account_id ? [Number(account_id)] : [];
   if (year !== undefined && month !== undefined) {
     const y = parseInt(year, 10);
     const m = parseInt(month, 10) + 1;
     const prefix = `${y}-${String(m).padStart(2, '0')}`;
     const rows = db.prepare(
-      "SELECT * FROM transactions WHERE user_id = ? AND date LIKE ? || '%' ORDER BY date DESC, id DESC"
-    ).all(req.user.id, prefix);
+      `SELECT * FROM transactions WHERE user_id = ? AND date LIKE ? || '%'${acctFilter} ORDER BY date DESC, id DESC`
+    ).all(req.user.id, prefix, ...acctArgs);
     return res.json(rows);
   }
-  const rows = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, id DESC').all(req.user.id);
+  const rows = db.prepare(
+    `SELECT * FROM transactions WHERE user_id = ?${acctFilter} ORDER BY date DESC, id DESC`
+  ).all(req.user.id, ...acctArgs);
   res.json(rows);
 });
 
 router.post('/', (req, res) => {
-  const { date, payee, category, amount, notes } = req.body;
+  const { date, payee, category, amount, notes, account_id } = req.body;
   if (!date || !payee || amount == null || isNaN(amount) || Number(amount) === 0) {
     return res.status(400).json({ error: 'date, payee, and a non-zero amount are required' });
   }
   const result = db.prepare(
-    'INSERT INTO transactions (user_id, date, payee, category, amount, notes) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(req.user.id, date, payee, category || 'Other', Number(amount), notes || null);
+    'INSERT INTO transactions (user_id, date, payee, category, amount, notes, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(req.user.id, date, payee, category || 'Other', Number(amount), notes || null, account_id || null);
   res.json(db.prepare('SELECT * FROM transactions WHERE id = ?').get(result.lastInsertRowid));
 });
 
 router.put('/:id', (req, res) => {
   const tx = db.prepare('SELECT * FROM transactions WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!tx) return res.status(404).json({ error: 'Transaction not found' });
-  const { date, payee, category, amount, notes } = req.body;
+  const { date, payee, category, amount, notes, account_id } = req.body;
   db.prepare(
-    'UPDATE transactions SET date = ?, payee = ?, category = ?, amount = ?, notes = ? WHERE id = ?'
+    'UPDATE transactions SET date = ?, payee = ?, category = ?, amount = ?, notes = ?, account_id = ? WHERE id = ?'
   ).run(
     date ?? tx.date,
     payee ?? tx.payee,
     category ?? tx.category,
     amount != null ? Number(amount) : tx.amount,
     notes !== undefined ? notes : tx.notes,
+    account_id !== undefined ? (account_id || null) : tx.account_id,
     tx.id
   );
   res.json(db.prepare('SELECT * FROM transactions WHERE id = ?').get(tx.id));

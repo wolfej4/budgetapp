@@ -1,5 +1,6 @@
 // Pages the user can hide from navigation (Dashboard and Settings are always shown)
 export const OPTIONAL_PAGES = [
+  { path: '/accounts', label: 'Accounts' },
   { path: '/bills', label: 'Bills' },
   { path: '/split-payments', label: 'Split Payments' },
   { path: '/loans', label: 'Loans' },

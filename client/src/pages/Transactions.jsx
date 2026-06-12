@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { get, post, put, del } from '../api.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -24,11 +25,12 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const EMPTY_FORM = { date: '', payee: '', category: 'Other', type: 'expense', amount: '', notes: '' };
+const EMPTY_FORM = { date: '', payee: '', category: 'Other', type: 'expense', amount: '', notes: '', account_id: '' };
 const EMPTY_REC = { payee: '', category: 'Other', type: 'expense', amount: '', notes: '', frequency: 'monthly', day_of_month: '', day_of_week: '', start_date: '', end_date: '' };
 
 export default function Transactions() {
   const today = new Date();
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState('transactions');
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -40,6 +42,8 @@ export default function Transactions() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [filterCat, setFilterCat] = useState('');
+  const [filterAccount, setFilterAccount] = useState(() => searchParams.get('account_id') || '');
+  const [accounts, setAccounts] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [budgetEdits, setBudgetEdits] = useState({});
@@ -61,7 +65,8 @@ export default function Transactions() {
 
   const load = () => {
     setLoading(true);
-    get(`/transactions?year=${viewYear}&month=${viewMonth}`).then(data => {
+    const acctQ = filterAccount ? `&account_id=${filterAccount}` : '';
+    get(`/transactions?year=${viewYear}&month=${viewMonth}${acctQ}`).then(data => {
       setTxs(Array.isArray(data) ? data : []);
       setLoading(false);
     });
@@ -71,13 +76,14 @@ export default function Transactions() {
     get('/category-budgets').then(data => setBudgets(Array.isArray(data) ? data : []));
     get('/transactions').then(data => setAllTxs(Array.isArray(data) ? data : []));
     get('/subscriptions').then(data => setSubNames((Array.isArray(data) ? data : []).map(s => s.name.toLowerCase())));
+    get('/accounts').then(data => setAccounts(Array.isArray(data) ? data : []));
   };
 
   const loadRecurring = () => {
     get('/recurring-transactions').then(data => setRecurring(Array.isArray(data) ? data : []));
   };
 
-  useEffect(() => { load(); }, [viewYear, viewMonth]);
+  useEffect(() => { load(); }, [viewYear, viewMonth, filterAccount]);
   useEffect(() => { loadExtras(); loadRecurring(); }, []);
 
   // Spending per category for the viewed month
@@ -154,7 +160,7 @@ export default function Transactions() {
 
   const openEdit = (tx) => {
     setEditTx(tx);
-    setForm({ date: tx.date, payee: tx.payee, category: tx.category || 'Other', type: tx.amount < 0 ? 'expense' : 'income', amount: String(Math.abs(tx.amount)), notes: tx.notes || '' });
+    setForm({ date: tx.date, payee: tx.payee, category: tx.category || 'Other', type: tx.amount < 0 ? 'expense' : 'income', amount: String(Math.abs(tx.amount)), notes: tx.notes || '', account_id: tx.account_id ? String(tx.account_id) : '' });
     setError('');
     setShowModal(true);
   };
@@ -165,7 +171,7 @@ export default function Transactions() {
     setSaving(true);
     const raw = parseFloat(form.amount);
     const signed = form.type === 'expense' ? -Math.abs(raw) : Math.abs(raw);
-    const payload = { date: form.date, payee: form.payee, category: form.category, amount: signed, notes: form.notes || null };
+    const payload = { date: form.date, payee: form.payee, category: form.category, amount: signed, notes: form.notes || null, account_id: form.account_id ? Number(form.account_id) : null };
     try {
       const data = editTx ? await put(`/transactions/${editTx.id}`, payload) : await post('/transactions', payload);
       if (data.error) { setError(data.error); return; }
@@ -343,10 +349,16 @@ export default function Transactions() {
                 <div style={{ fontWeight: 600, minWidth: 150, textAlign: 'center' }}>{MONTHS[viewMonth]} {viewYear}</div>
                 <button className="btn btn-ghost btn-sm" onClick={nextMonth}>&#8250;</button>
               </div>
-              <select className="form-select" style={{ width: 180 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+              <select className="form-select" style={{ width: 160 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
                 <option value="">All categories</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {accounts.length > 0 && (
+                <select className="form-select" style={{ width: 160 }} value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
+                  <option value="">All accounts</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              )}
             </div>
             {loading ? (
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
@@ -358,7 +370,9 @@ export default function Transactions() {
                   <thead>
                     <tr>
                       <th>Date</th><th>Payee</th><th>Category</th>
-                      <th style={{ textAlign: 'right' }}>Amount</th><th>Notes</th><th>Actions</th>
+                      <th style={{ textAlign: 'right' }}>Amount</th>
+                      {accounts.length > 0 && <th>Account</th>}
+                      <th>Notes</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -373,6 +387,14 @@ export default function Transactions() {
                         <td style={{ textAlign: 'right', fontWeight: 600, color: tx.amount >= 0 ? 'var(--success)' : 'var(--text)' }}>
                           {tx.amount >= 0 ? '+' : '-'}{fmt(tx.amount)}
                         </td>
+                        {accounts.length > 0 && (
+                          <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 13 }}>
+                            {(() => {
+                              const acct = accounts.find(a => a.id === tx.account_id);
+                              return acct ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: acct.color, display: 'inline-block' }} />{acct.name}</span> : '—';
+                            })()}
+                          </td>
+                        )}
                         <td style={{ color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.notes || '—'}</td>
                         <td>
                           <div className="flex-gap">
@@ -482,6 +504,15 @@ export default function Transactions() {
                   </select>
                 </div>
               </div>
+              {accounts.length > 0 && (
+                <div className="form-group">
+                  <label className="form-label">Account (optional)</label>
+                  <select className="form-select" value={form.account_id} onChange={e => setForm({...form, account_id: e.target.value})}>
+                    <option value="">— Unassigned —</option>
+                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Notes</label>
                 <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Optional notes..." />
